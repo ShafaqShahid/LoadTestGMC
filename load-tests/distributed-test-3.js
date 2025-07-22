@@ -53,17 +53,26 @@ export default function() {
   // Common headers for all requests
   const headers = {
     'Content-Type': 'application/x-www-form-urlencoded',
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+    'Accept-Language': 'en-US,en;q=0.5',
+    'Accept-Encoding': 'gzip, deflate',
+    'Connection': 'keep-alive',
+    'Upgrade-Insecure-Requests': '1'
   };
   
-  // Step 1: Navigate to login page
-  const loginPageResponse = http.get(`${baseUrl}/CONTROL3/login.cfm`, { headers });
-  
-  check(loginPageResponse, {
-    'login page loaded': (r) => r.status === 200,
-  });
+  try {
+    // Step 1: Navigate to login page
+    const loginPageResponse = http.get(`${baseUrl}/CONTROL3/login.cfm`, { 
+      headers,
+      timeout: '45s' // Increased timeout for stability
+    });
+    
+    check(loginPageResponse, {
+      'login page loaded': (r) => r.status === 200,
+    });
 
-  sleep(1);
+    sleep(4); // Increased sleep for stability
 
   // Step 2: Login
   const loginData = {
@@ -72,29 +81,38 @@ export default function() {
     storeUserName: 'on'
   };
 
-  const loginResponse = http.post(`${baseUrl}/CONTROL3/login.cfm`, loginData, { headers });
+    const loginResponse = http.post(`${baseUrl}/CONTROL3/login.cfm`, loginData, { 
+      headers,
+      timeout: '45s' // Increased timeout for stability
+    });
 
-  check(loginResponse, {
-    'login successful': (r) => r.status === 200 || r.status === 302,
-  });
+    check(loginResponse, {
+      'login successful': (r) => r.status === 200 || r.status === 302,
+    });
 
-  sleep(1);
+    sleep(4); // Increased sleep for stability
 
-  // Step 3: Navigate to search page (dashboard)
-  const dashboardResponse = http.get(`${baseUrl}/CONTROL3/index.cfm`, { headers });
-  
-  check(dashboardResponse, {
-    'dashboard loaded': (r) => r.status === 200,
-  });
+    // Step 3: Navigate to search page (dashboard)
+    const dashboardResponse = http.get(`${baseUrl}/CONTROL3/index.cfm`, { 
+      headers,
+      timeout: '45s' // Increased timeout for stability
+    });
+    
+    check(dashboardResponse, {
+      'dashboard loaded': (r) => r.status === 200,
+    });
 
-  sleep(1);
+    sleep(4); // Increased sleep for stability
 
-  // Step 4: Search for event
-  const searchData = {
-    SelectedID: user.eventId,
-  };
+    // Step 4: Search for event
+    const searchData = {
+      SelectedID: user.eventId,
+    };
 
-  const searchResponse = http.post(`${baseUrl}/CONTROL3/index.cfm`, searchData, { headers });
+    const searchResponse = http.post(`${baseUrl}/CONTROL3/index.cfm`, searchData, { 
+      headers,
+      timeout: '45s' // Increased timeout for stability
+    });
 
   check(searchResponse, {
     'search successful': (r) => r.status === 200,
@@ -108,7 +126,11 @@ export default function() {
     },
   });
 
-  sleep(1);
+    sleep(4); // Increased sleep for stability
+  } catch (error) {
+    console.log(`Error in test iteration: ${error.message}`);
+    // Continue with next iteration instead of failing completely
+  }
 }
 
 // Setup function

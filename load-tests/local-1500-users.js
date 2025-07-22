@@ -73,15 +73,15 @@ export default function() {
   };
   
   try {
-    // Step 1: Navigate to login page
+  // Step 1: Navigate to login page
     const loginPageResponse = http.get(`${baseUrl}/CONTROL3/login.cfm`, { 
       headers,
       timeout: '45s' // Increased timeout for stability
     });
-    
-    check(loginPageResponse, {
-      'login page loaded': (r) => r.status === 200,
-    });
+  
+  check(loginPageResponse, {
+    'login page loaded': (r) => r.status === 200,
+  });
 
     sleep(4); // Increased sleep for stability
 

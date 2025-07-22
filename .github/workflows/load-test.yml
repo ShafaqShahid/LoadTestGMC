@@ -47,6 +47,10 @@ jobs:
     - name: Run Full Test (1500 users - optimized)
       if: github.event.inputs.test_type == 'full'
       run: k6 run load-tests/local-1500-users.js --out json=results.json
+      
+    - name: Generate Reports
+      if: always()
+      run: node load-tests/report-generator.js
         
     - name: Upload results
       uses: actions/upload-artifact@v4
@@ -55,17 +59,54 @@ jobs:
         name: load-test-results
         path: |
           results.json
+          load-test-report.html
+          detailed-report.json
         retention-days: 30
         
     - name: Display summary
       if: always()
       run: |
-        echo "## Load Test Summary" >> $GITHUB_STEP_SUMMARY
-        echo "- Test Type: ${{ github.event.inputs.test_type }}" >> $GITHUB_STEP_SUMMARY
-        echo "- Users: ${{ github.event.inputs.target_users }}" >> $GITHUB_STEP_SUMMARY
-        echo "- Status: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
-        echo "- Results available in artifacts" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "### Test Options:" >> $GITHUB_STEP_SUMMARY
-        echo "- **full**: 1500 users with optimized settings for better performance" >> $GITHUB_STEP_SUMMARY
-        echo "- **quick**: Fast test for validation" >> $GITHUB_STEP_SUMMARY 
+        if [ -f "detailed-report.json" ]; then
+          node -e "
+            const report = JSON.parse(require('fs').readFileSync('detailed-report.json', 'utf8'));
+            console.log('## 🚀 Load Test Results Summary');
+            console.log('');
+            console.log('### 📊 Performance Metrics');
+            console.log('- **Test Duration:** ' + report.summary.testDuration);
+            console.log('- **Total Requests:** ' + report.summary.totalRequests.toLocaleString());
+            console.log('- **Error Rate:** ' + report.summary.errorRate);
+            console.log('- **Avg Response Time:** ' + report.summary.avgResponseTime);
+            console.log('- **P95 Response Time:** ' + report.summary.p95ResponseTime);
+            console.log('- **Throughput:** ' + report.summary.requestsPerSecond + ' req/s');
+            console.log('');
+            console.log('### 🎯 Threshold Results');
+            report.thresholds.forEach(t => {
+              const status = t.passed ? '✅ PASS' : '❌ FAIL';
+              console.log('- **' + t.name + ':** ' + status + ' (' + t.actual + ' / ' + t.threshold + ')');
+            });
+            console.log('');
+            console.log('### ✅ Check Results');
+            report.checks.forEach(c => {
+              const status = c.passRate === '100.0%' ? '✅' : '⚠️';
+              console.log('- **' + c.name + ':** ' + status + ' ' + c.passRate + ' (' + c.passed + '/' + c.total + ')');
+            });
+            console.log('');
+            if (report.recommendations.length > 0) {
+              console.log('### 💡 Recommendations');
+              report.recommendations.forEach(r => {
+                const icon = r.type === 'success' ? '✅' : r.type === 'warning' ? '⚠️' : '🚨';
+                console.log('- ' + icon + ' **' + r.category + ':** ' + r.message);
+              });
+              console.log('');
+            }
+            console.log('### 📈 Detailed Reports');
+            console.log('- **HTML Report:** Available in artifacts (load-test-report.html)');
+            console.log('- **JSON Report:** Available in artifacts (detailed-report.json)');
+          " >> $GITHUB_STEP_SUMMARY
+        else
+          echo "## Load Test Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- Test Type: ${{ github.event.inputs.test_type }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Users: ${{ github.event.inputs.target_users }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Status: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Results available in artifacts" >> $GITHUB_STEP_SUMMARY
+        fi 

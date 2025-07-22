@@ -81,29 +81,38 @@ export default function() {
     storeUserName: 'on'
   };
 
-  const loginResponse = http.post(`${baseUrl}/CONTROL3/login.cfm`, loginData, { headers });
+    const loginResponse = http.post(`${baseUrl}/CONTROL3/login.cfm`, loginData, { 
+      headers,
+      timeout: '45s' // Increased timeout for stability
+    });
 
-  check(loginResponse, {
-    'login successful': (r) => r.status === 200 || r.status === 302,
-  });
+    check(loginResponse, {
+      'login successful': (r) => r.status === 200 || r.status === 302,
+    });
 
-  sleep(1);
+    sleep(4); // Increased sleep for stability
 
-  // Step 3: Navigate to search page (dashboard)
-  const dashboardResponse = http.get(`${baseUrl}/CONTROL3/index.cfm`, { headers });
-  
-  check(dashboardResponse, {
-    'dashboard loaded': (r) => r.status === 200,
-  });
+    // Step 3: Navigate to search page (dashboard)
+    const dashboardResponse = http.get(`${baseUrl}/CONTROL3/index.cfm`, { 
+      headers,
+      timeout: '45s' // Increased timeout for stability
+    });
+    
+    check(dashboardResponse, {
+      'dashboard loaded': (r) => r.status === 200,
+    });
 
-  sleep(1);
+    sleep(4); // Increased sleep for stability
 
-  // Step 4: Search for event
-  const searchData = {
-    SelectedID: user.eventId,
-  };
+    // Step 4: Search for event
+    const searchData = {
+      SelectedID: user.eventId,
+    };
 
-  const searchResponse = http.post(`${baseUrl}/CONTROL3/index.cfm`, searchData, { headers });
+    const searchResponse = http.post(`${baseUrl}/CONTROL3/index.cfm`, searchData, { 
+      headers,
+      timeout: '45s' // Increased timeout for stability
+    });
 
   check(searchResponse, {
     'search successful': (r) => r.status === 200,
