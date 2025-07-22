@@ -87,7 +87,14 @@ export default function() {
 
   check(searchResponse, {
     'search successful': (r) => r.status === 200,
-    'event found': (r) => r.body.includes(user.eventId) || r.url.includes('index.cfm'),
+    'event found': (r) => {
+      // Handle case where response body might be undefined (due to discardResponseBodies)
+      if (r.body && typeof r.body === 'string') {
+        return r.body.includes(user.eventId);
+      }
+      // If body is discarded, check URL instead
+      return r.url && r.url.includes('index.cfm');
+    },
   });
 
   sleep(1);
