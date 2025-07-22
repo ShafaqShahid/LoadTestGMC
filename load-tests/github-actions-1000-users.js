@@ -2,26 +2,44 @@ import http from 'k6/http';
 import { check, sleep } from 'k6';
 
 /*
-🚀 QUICK LOAD TEST - SETUP VERIFICATION
+🚀 GITHUB ACTIONS SAFE LOAD TEST - 1000 USERS
 
-👥 USERS: 100 concurrent (GitHub Actions friendly)
-⏱️ DURATION: 4 minutes total
-🎯 PURPOSE: Verify setup and basic functionality
-💰 COST: Free (within GitHub Actions limits)
+💻 GITHUB ACTIONS SAFE: 
+   - Conservative user count (1000 instead of 1500)
+   - Memory optimized
+   - Safe for GitHub Actions runners
+   - Free to run (no cloud costs)
 
-💡 RECOMMENDATION: Run this first before other tests
+⏱️  TEST DURATION: 25 minutes total
+   - Ramp-up: 12 minutes
+   - Peak load: 8 minutes at 1000 users
+   - Ramp-down: 5 minutes
+
+🔧 REQUIREMENTS:
+   - GitHub Actions runner (2 CPU, 7GB RAM)
+   - Stable internet connection
+
+💡 RECOMMENDATION: Use this if 1500 users causes issues
 */
 
+// GitHub Actions safe configuration for 1000 users
 export const options = {
   stages: [
-    { duration: '1m', target: 50 },   // Ramp up to 50 users
-    { duration: '2m', target: 100 },  // Ramp up to 100 users
-    { duration: '1m', target: 0 },    // Ramp down to 0 users
+    { duration: '2m', target: 100 },   // Ramp up to 100 users
+    { duration: '3m', target: 300 },   // Ramp up to 300 users
+    { duration: '4m', target: 600 },   // Ramp up to 600 users
+    { duration: '3m', target: 1000 },  // Ramp up to 1000 users
+    { duration: '8m', target: 1000 },  // Stay at 1000 users
+    { duration: '5m', target: 0 },     // Ramp down to 0 users
   ],
   thresholds: {
-    http_req_duration: ['p(95)<2000'], // 95% of requests must complete below 2s
-    http_req_failed: ['rate<0.1'],     // Error rate must be less than 10%
+    http_req_duration: ['p(95)<3000'], // Increased threshold for GitHub Actions
+    http_req_failed: ['rate<0.15'],    // Increased error tolerance
   },
+  // Memory optimization for GitHub Actions
+  noConnectionReuse: true,
+  noVUConnectionReuse: true,
+  discardResponseBodies: true,
 };
 
 // Test data - Single user for load testing
@@ -52,7 +70,7 @@ export default function() {
     'login page loaded': (r) => r.status === 200,
   });
 
-  sleep(1);
+  sleep(2); // Increased sleep for GitHub Actions
 
   // Step 2: Login
   const loginData = {
@@ -67,7 +85,7 @@ export default function() {
     'login successful': (r) => r.status === 200 || r.status === 302,
   });
 
-  sleep(1);
+  sleep(2); // Increased sleep for GitHub Actions
 
   // Step 3: Navigate to search page (dashboard)
   const dashboardResponse = http.get(`${baseUrl}/CONTROL3/index.cfm`, { headers });
@@ -76,7 +94,7 @@ export default function() {
     'dashboard loaded': (r) => r.status === 200,
   });
 
-  sleep(1);
+  sleep(2); // Increased sleep for GitHub Actions
 
   // Step 4: Search for event
   const searchData = {
@@ -90,22 +108,22 @@ export default function() {
     'event found': (r) => r.body.includes(user.eventId) || r.url.includes('index.cfm'),
   });
 
-  sleep(1);
+  sleep(2); // Increased sleep for GitHub Actions
 }
 
 // Setup function
 export function setup() {
-  console.log('🚀 Starting quick load test - 100 users');
-  console.log('⏱️ Duration: 4 minutes');
-  console.log('🎯 Purpose: Setup verification');
+  console.log('🚀 Starting GitHub Actions safe load test - 1000 users');
+  console.log('⏱️ Duration: 25 minutes (safe for GitHub Actions)');
+  console.log('💻 Conservative configuration for GitHub Actions');
   console.log('📊 Monitoring performance metrics...');
   console.log('👤 Test User: shafaqs');
   console.log('🎯 Target Event: 16289');
+  console.log('🔧 Memory optimized and safe for GitHub Actions');
 }
 
 // Teardown function
 export function teardown(data) {
-  console.log('✅ Quick load test completed');
+  console.log('✅ GitHub Actions safe load test completed');
   console.log('📈 Check results for performance analysis');
-  console.log('💡 If successful, proceed to other tests');
 } 

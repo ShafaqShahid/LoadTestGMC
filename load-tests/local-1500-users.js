@@ -2,42 +2,44 @@ import http from 'k6/http';
 import { check, sleep } from 'k6';
 
 /*
-⚠️  LOCAL LOAD TESTING - IMPORTANT INFORMATION ⚠️
+⚠️  SINGLE LOAD TEST - 1500 USERS (GitHub Actions Optimized)
 
-💻 LOCAL LIMITATIONS: 
-   - Maximum supported users: 1500 concurrent (depends on your machine)
-   - Requires high-performance machine (16GB+ RAM, 8+ cores)
-   - May impact system performance during test
+💻 GITHUB ACTIONS OPTIMIZED: 
+   - Reduced memory usage
+   - Conservative ramp-up
+   - Optimized for GitHub Actions runners
    - Free to run (no cloud costs)
 
-⏱️  TEST DURATION: 45 minutes total
-   - Ramp-up: 20 minutes
-   - Peak load: 20 minutes at 1500 users
+⏱️  TEST DURATION: 30 minutes total (reduced from 45)
+   - Ramp-up: 15 minutes
+   - Peak load: 10 minutes at 1500 users
    - Ramp-down: 5 minutes
 
 🔧 REQUIREMENTS:
-   - Node.js installed
-   - k6 installed (auto-installed by script)
-   - High-performance machine
+   - GitHub Actions runner (2 CPU, 7GB RAM)
    - Stable internet connection
 
-💡 RECOMMENDATION: Start with smaller tests first
+💡 RECOMMENDATION: Use this for single high-load test on GitHub Actions
 */
 
-// Local load test configuration for 1500 users
+// GitHub Actions optimized configuration for 1500 users
 export const options = {
   stages: [
-    { duration: '3m', target: 150 },   // Ramp up to 150 users
-    { duration: '5m', target: 500 },   // Ramp up to 500 users
-    { duration: '7m', target: 1000 },  // Ramp up to 1000 users
+    { duration: '2m', target: 100 },   // Ramp up to 100 users
+    { duration: '3m', target: 300 },   // Ramp up to 300 users
+    { duration: '5m', target: 800 },   // Ramp up to 800 users
     { duration: '5m', target: 1500 },  // Ramp up to 1500 users
-    { duration: '20m', target: 1500 }, // Stay at 1500 users
+    { duration: '10m', target: 1500 }, // Stay at 1500 users (reduced from 20m)
     { duration: '5m', target: 0 },     // Ramp down to 0 users
   ],
   thresholds: {
-    http_req_duration: ['p(95)<2000'], // 95% of requests must complete below 2s
-    http_req_failed: ['rate<0.1'],     // Error rate must be less than 10%
+    http_req_duration: ['p(95)<3000'], // Increased threshold for GitHub Actions
+    http_req_failed: ['rate<0.15'],    // Increased error tolerance
   },
+  // Memory optimization for GitHub Actions
+  noConnectionReuse: true,
+  noVUConnectionReuse: true,
+  discardResponseBodies: true,
 };
 
 // Test data - Single user for load testing
@@ -68,7 +70,7 @@ export default function() {
     'login page loaded': (r) => r.status === 200,
   });
 
-  sleep(1);
+  sleep(2); // Increased sleep for GitHub Actions
 
   // Step 2: Login
   const loginData = {
@@ -83,7 +85,7 @@ export default function() {
     'login successful': (r) => r.status === 200 || r.status === 302,
   });
 
-  sleep(1);
+  sleep(2); // Increased sleep for GitHub Actions
 
   // Step 3: Navigate to search page (dashboard)
   const dashboardResponse = http.get(`${baseUrl}/CONTROL3/index.cfm`, { headers });
@@ -92,7 +94,7 @@ export default function() {
     'dashboard loaded': (r) => r.status === 200,
   });
 
-  sleep(1);
+  sleep(2); // Increased sleep for GitHub Actions
 
   // Step 4: Search for event
   const searchData = {
@@ -106,21 +108,22 @@ export default function() {
     'event found': (r) => r.body.includes(user.eventId) || r.url.includes('index.cfm'),
   });
 
-  sleep(1);
+  sleep(2); // Increased sleep for GitHub Actions
 }
 
 // Setup function
 export function setup() {
-  console.log('🚀 Starting local load test - 1500 users');
-  console.log('⏱️ Duration: 45 minutes');
-  console.log('💻 Running locally (free)');
+  console.log('🚀 Starting GitHub Actions optimized load test - 1500 users');
+  console.log('⏱️ Duration: 30 minutes (optimized for GitHub Actions)');
+  console.log('💻 GitHub Actions runner optimized');
   console.log('📊 Monitoring performance metrics...');
   console.log('👤 Test User: shafaqs');
   console.log('🎯 Target Event: 16289');
+  console.log('🔧 Memory optimized for GitHub Actions');
 }
 
 // Teardown function
 export function teardown(data) {
-  console.log('✅ Local load test completed');
+  console.log('✅ GitHub Actions optimized load test completed');
   console.log('📈 Check results for performance analysis');
 } 

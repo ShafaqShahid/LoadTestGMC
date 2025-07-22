@@ -1,13 +1,17 @@
 {
   "name": "sports-system-load-testing",
   "version": "1.0.0",
-  "description": "Load testing setup for Sports System with 1500 users",
+  "description": "Load testing setup for Sports System with 4 options: Quick, Safe 1000, 1500, and Distributed",
   "scripts": {
     "test:quick": "k6 run load-tests/quick-test.js",
-    "test:full": "k6 run load-tests/local-1500-users.js",
-    "test:aws": "k6 run load-tests/aws-1500-users.js"
+    "test:safe-1000": "k6 run load-tests/github-actions-1000-users.js",
+    "test:single-1500": "k6 run load-tests/local-1500-users.js",
+    "test:distributed-1": "k6 run load-tests/distributed-test-1.js",
+    "test:distributed-2": "k6 run load-tests/distributed-test-2.js",
+    "test:distributed-3": "k6 run load-tests/distributed-test-3.js",
+    "combine-results": "node load-tests/results-combiner.js"
   },
-  "keywords": ["load-testing", "k6", "performance", "sports-system"],
+  "keywords": ["load-testing", "k6", "performance", "sports-system", "github-actions"],
   "author": "Shafaq Shahid",
   "license": "MIT",
   "repository": {

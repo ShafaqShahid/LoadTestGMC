@@ -2,21 +2,24 @@ import http from 'k6/http';
 import { check, sleep } from 'k6';
 
 /*
-🚀 QUICK LOAD TEST - SETUP VERIFICATION
+🚀 DISTRIBUTED LOAD TEST - PART 2/3
 
-👥 USERS: 100 concurrent (GitHub Actions friendly)
-⏱️ DURATION: 4 minutes total
-🎯 PURPOSE: Verify setup and basic functionality
-💰 COST: Free (within GitHub Actions limits)
+👥 USERS: 1500 concurrent
+⏱️ DURATION: 45 minutes
+🎯 PURPOSE: Distributed testing for 3000 total users
+💰 COST: FREE (GitHub Actions)
 
-💡 RECOMMENDATION: Run this first before other tests
+💡 This is Part 2 of 3 tests running simultaneously
 */
 
 export const options = {
   stages: [
-    { duration: '1m', target: 50 },   // Ramp up to 50 users
-    { duration: '2m', target: 100 },  // Ramp up to 100 users
-    { duration: '1m', target: 0 },    // Ramp down to 0 users
+    { duration: '3m', target: 150 },   // Ramp up to 150 users
+    { duration: '5m', target: 500 },   // Ramp up to 500 users
+    { duration: '7m', target: 1000 },  // Ramp up to 1000 users
+    { duration: '5m', target: 1500 },  // Ramp up to 1500 users
+    { duration: '20m', target: 1500 }, // Stay at 1500 users
+    { duration: '5m', target: 0 },     // Ramp down to 0 users
   ],
   thresholds: {
     http_req_duration: ['p(95)<2000'], // 95% of requests must complete below 2s
@@ -95,9 +98,9 @@ export default function() {
 
 // Setup function
 export function setup() {
-  console.log('🚀 Starting quick load test - 100 users');
-  console.log('⏱️ Duration: 4 minutes');
-  console.log('🎯 Purpose: Setup verification');
+  console.log('🚀 Starting distributed load test - Part 2/3');
+  console.log('👥 Users: 1500 concurrent');
+  console.log('⏱️ Duration: 45 minutes');
   console.log('📊 Monitoring performance metrics...');
   console.log('👤 Test User: shafaqs');
   console.log('🎯 Target Event: 16289');
@@ -105,7 +108,6 @@ export function setup() {
 
 // Teardown function
 export function teardown(data) {
-  console.log('✅ Quick load test completed');
-  console.log('📈 Check results for performance analysis');
-  console.log('💡 If successful, proceed to other tests');
-} 
+  console.log('✅ Distributed test Part 2/3 completed');
+  console.log('📈 Results saved for combination');
+}
