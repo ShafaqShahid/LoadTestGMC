@@ -1,0 +1,67 @@
+name: Load Testing - 1500 Users
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_type:
+        description: 'Test Type'
+        required: true
+        default: 'quick'
+        type: choice
+        options:
+        - quick
+        - full
+      target_users:
+        description: 'Number of Users (for custom tests)'
+        required: false
+        default: '100'
+        type: string
+
+jobs:
+  load-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        
+    - name: Install dependencies
+      run: npm install
+      
+    - name: Install k6
+      run: |
+        sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+        echo "deb https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+        sudo apt-get update
+        sudo apt-get install k6
+        
+    - name: Run Quick Test
+      if: github.event.inputs.test_type == 'quick'
+      run: k6 run load-tests/quick-test.js --out json=results.json
+      
+    - name: Run Full Test
+      if: github.event.inputs.test_type == 'full'
+      run: k6 run load-tests/local-1500-users.js --out json=results.json
+        
+    - name: Upload results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: load-test-results
+        path: |
+          results.json
+        retention-days: 30
+        
+    - name: Display summary
+      if: always()
+      run: |
+        echo "## Load Test Summary" >> $GITHUB_STEP_SUMMARY
+        echo "- Test Type: ${{ github.event.inputs.test_type }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Users: ${{ github.event.inputs.target_users }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Status: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Results available in artifacts" >> $GITHUB_STEP_SUMMARY 

@@ -1,0 +1,17 @@
+{
+  "name": "sports-system-load-testing",
+  "version": "1.0.0",
+  "description": "Load testing setup for Sports System with 1500 users",
+  "scripts": {
+    "test:quick": "k6 run load-tests/quick-test.js",
+    "test:full": "k6 run load-tests/local-1500-users.js",
+    "test:aws": "k6 run load-tests/aws-1500-users.js"
+  },
+  "keywords": ["load-testing", "k6", "performance", "sports-system"],
+  "author": "Shafaq Shahid",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ShafaqShahid/LoadTest.git"
+  }
+} 
