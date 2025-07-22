@@ -31,9 +31,9 @@ This guide explains the **single, comprehensive workflow** that includes all loa
 
 ### 4. **Distributed Testing** (`distributed`)
 - **Users**: 3000 total (3 x 1500)
-- **Duration**: ~135 minutes total
-- **Purpose**: High-scale distributed load testing
-- **Best for**: Maximum load testing across multiple runners
+- **Duration**: ~45 minutes (all tests run simultaneously)
+- **Purpose**: True parallel distributed load testing
+- **Best for**: Maximum load testing across multiple runners simultaneously
 
 ## 🚀 **How to Use**
 
@@ -51,9 +51,7 @@ Test Type: [Choose from dropdown]
 - single-1500
 - distributed
 
-Delay between tests: [For distributed only]
-- Default: 2 minutes
-- Range: 1-10 minutes
+# Note: Distributed tests now run in parallel (no delay needed)
 ```
 
 ### **Step 3: Run and Monitor**
@@ -112,8 +110,7 @@ Purpose: Your main 1500-user test with optimized settings
 ### **For Maximum Load:**
 ```
 Test Type: distributed
-Delay: 2-5 minutes
-Purpose: 3000 total users across 3 runners
+Purpose: 3000 total users across 3 runners simultaneously
 ```
 
 ## 📈 **Sample Report Output**

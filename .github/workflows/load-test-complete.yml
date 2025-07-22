@@ -13,11 +13,7 @@ on:
         - safe-1000
         - single-1500
         - distributed
-      delay_between_tests:
-        description: 'Delay between distributed tests (minutes)'
-        required: false
-        default: '2'
-        type: string
+      # Note: Distributed tests now run in parallel (no delay needed)
 
 jobs:
   # Job 1: Quick Test (100 users, 4 minutes)
@@ -339,11 +335,10 @@ jobs:
           detailed-report.json
         retention-days: 30
 
-  # Job 5: Distributed Test Part 2 (1500 users)
+  # Job 5: Distributed Test Part 2 (1500 users) - PARALLEL
   distributed-test-2:
     runs-on: ubuntu-latest
     name: Distributed Test - Part 2/3 (1500 users)
-    needs: distributed-test-1
     if: github.event.inputs.test_type == 'distributed'
     
     steps:
@@ -364,9 +359,6 @@ jobs:
         echo "deb https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
         sudo apt-get update
         sudo apt-get install k6
-        
-    - name: Wait for delay
-      run: sleep ${{ github.event.inputs.delay_between_tests }}m
         
     - name: Run Distributed Test Part 2
       run: k6 run load-tests/distributed-test-2.js --out json=results.json
@@ -386,11 +378,10 @@ jobs:
           detailed-report.json
         retention-days: 30
 
-  # Job 6: Distributed Test Part 3 (1500 users)
+  # Job 6: Distributed Test Part 3 (1500 users) - PARALLEL
   distributed-test-3:
     runs-on: ubuntu-latest
     name: Distributed Test - Part 3/3 (1500 users)
-    needs: distributed-test-2
     if: github.event.inputs.test_type == 'distributed'
     
     steps:
@@ -412,9 +403,6 @@ jobs:
         sudo apt-get update
         sudo apt-get install k6
         
-    - name: Wait for delay
-      run: sleep ${{ github.event.inputs.delay_between_tests }}m
-        
     - name: Run Distributed Test Part 3
       run: k6 run load-tests/distributed-test-3.js --out json=results.json
         
@@ -433,7 +421,7 @@ jobs:
           detailed-report.json
         retention-days: 30
 
-  # Job 7: Combine Distributed Results
+  # Job 7: Combine Distributed Results (waits for all parallel jobs)
   combine-results:
     runs-on: ubuntu-latest
     name: Combine Distributed Results
@@ -451,13 +439,13 @@ jobs:
         
     - name: Combine Results
       run: |
-        echo "## 🚀 Combined Load Test Results - 3000 Users" >> $GITHUB_STEP_SUMMARY
+        echo "## 🚀 Combined Load Test Results - 3000 Users (PARALLEL)" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### 📊 Test Summary:" >> $GITHUB_STEP_SUMMARY
         echo "- **Total Users**: 3000 (3 x 1500)" >> $GITHUB_STEP_SUMMARY
-        echo "- **Total Duration**: ~135 minutes (3 x 45 minutes)" >> $GITHUB_STEP_SUMMARY
-        echo "- **Test Parts**: 3 distributed tests" >> $GITHUB_STEP_SUMMARY
-        echo "- **Delay Between Tests**: ${{ github.event.inputs.delay_between_tests }} minutes" >> $GITHUB_STEP_SUMMARY
+        echo "- **Test Duration**: ~45 minutes (all tests run simultaneously)" >> $GITHUB_STEP_SUMMARY
+        echo "- **Test Parts**: 3 parallel distributed tests" >> $GITHUB_STEP_SUMMARY
+        echo "- **Execution**: All tests run simultaneously for true distributed load" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### 🎯 Individual Results:" >> $GITHUB_STEP_SUMMARY
         echo "- **Part 1**: 1500 users - [Download Results](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
@@ -466,7 +454,8 @@ jobs:
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### 📈 Combined Metrics:" >> $GITHUB_STEP_SUMMARY
         echo "- **Total Requests**: ~18,000 (3 x 6,000)" >> $GITHUB_STEP_SUMMARY
-        echo "- **Peak Load**: 3000 concurrent users" >> $GITHUB_STEP_SUMMARY
+        echo "- **Peak Load**: 3000 concurrent users (simultaneous)" >> $GITHUB_STEP_SUMMARY
+        echo "- **True Distributed**: All tests run in parallel" >> $GITHUB_STEP_SUMMARY
         echo "- **Cost**: FREE (GitHub Actions)" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### 📊 Detailed Reports:" >> $GITHUB_STEP_SUMMARY
@@ -477,7 +466,7 @@ jobs:
         
     - name: Create Combined Report
       run: |
-        echo '{"total_users": 3000, "parts": 3, "users_per_part": 1500, "duration_per_part": "45 minutes", "delay_between_tests": "${{ github.event.inputs.delay_between_tests }} minutes", "status": "completed", "reports_generated": true}' > combined-results.json
+        echo '{"total_users": 3000, "parts": 3, "users_per_part": 1500, "duration_per_part": "45 minutes", "execution": "parallel", "status": "completed", "reports_generated": true}' > combined-results.json
         
     - name: Upload Combined Results
       uses: actions/upload-artifact@v4
