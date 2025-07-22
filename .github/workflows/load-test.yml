@@ -1,4 +1,4 @@
-name: Load Testing - 1500 Users
+name: Load Testing - Multiple Options
 
 on:
   workflow_dispatch:
@@ -6,10 +6,12 @@ on:
       test_type:
         description: 'Test Type'
         required: true
-        default: 'quick'
+        default: 'conservative'
         type: choice
         options:
         - quick
+        - conservative
+        - optimized
         - full
       target_users:
         description: 'Number of Users (for custom tests)'
@@ -44,7 +46,15 @@ jobs:
       if: github.event.inputs.test_type == 'quick'
       run: k6 run load-tests/quick-test.js --out json=results.json
       
-    - name: Run Full Test
+    - name: Run Conservative Test (1000 users - recommended)
+      if: github.event.inputs.test_type == 'conservative'
+      run: k6 run load-tests/github-actions-conservative-1000.js --out json=results.json
+      
+    - name: Run Optimized Test (1500 users - fixed)
+      if: github.event.inputs.test_type == 'optimized'
+      run: k6 run load-tests/github-actions-optimized-1500.js --out json=results.json
+      
+    - name: Run Full Test (1500 users - original)
       if: github.event.inputs.test_type == 'full'
       run: k6 run load-tests/local-1500-users.js --out json=results.json
         
@@ -64,4 +74,10 @@ jobs:
         echo "- Test Type: ${{ github.event.inputs.test_type }}" >> $GITHUB_STEP_SUMMARY
         echo "- Users: ${{ github.event.inputs.target_users }}" >> $GITHUB_STEP_SUMMARY
         echo "- Status: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
-        echo "- Results available in artifacts" >> $GITHUB_STEP_SUMMARY 
+        echo "- Results available in artifacts" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Test Options:" >> $GITHUB_STEP_SUMMARY
+        echo "- **conservative**: 1000 users, gradual ramp-up, high chance of success" >> $GITHUB_STEP_SUMMARY
+        echo "- **optimized**: 1500 users, improved settings, better error handling" >> $GITHUB_STEP_SUMMARY
+        echo "- **full**: 1500 users, original settings (may fail thresholds)" >> $GITHUB_STEP_SUMMARY
+        echo "- **quick**: Fast test for validation" >> $GITHUB_STEP_SUMMARY 
