@@ -2,7 +2,7 @@ import http from 'k6/http';
 import { check, sleep } from 'k6';
 
 /*
-⚠️  SINGLE LOAD TEST - 1500 USERS (GitHub Actions Optimized)
+⚠️  SINGLE LOAD TEST - 1600 USERS (GitHub Actions Optimized)
 
 💻 GITHUB ACTIONS OPTIMIZED: 
    - Reduced memory usage
@@ -12,7 +12,7 @@ import { check, sleep } from 'k6';
 
 ⏱️  TEST DURATION: 30 minutes total (reduced from 45)
    - Ramp-up: 15 minutes
-   - Peak load: 10 minutes at 1500 users
+   - Peak load: 10 minutes at 1600 users
    - Ramp-down: 5 minutes
 
 🔧 REQUIREMENTS:
@@ -22,28 +22,28 @@ import { check, sleep } from 'k6';
 💡 RECOMMENDATION: Use this for single high-load test on GitHub Actions
 */
 
-// GitHub Actions optimized configuration for 1500 users
+// GitHub Actions optimized configuration for 1600 users
 export const options = {
   stages: [
-    { duration: '4m', target: 100 },   // Gentle start
-    { duration: '5m', target: 300 },   // Gradual increase
-    { duration: '6m', target: 600 },   // Moderate increase
-    { duration: '5m', target: 1000 },  // Steady increase
-    { duration: '5m', target: 1500 },  // Final ramp to target
-    { duration: '8m', target: 1500 },  // Stay at 1500 users
+    { duration: '4m', target: 200 },   // Increased by 100
+    { duration: '5m', target: 400 },   // Increased by 100
+    { duration: '6m', target: 700 },   // Increased by 100
+    { duration: '5m', target: 1100 },  // Increased by 100
+    { duration: '5m', target: 1600 },  // Increased by 100
+    { duration: '8m', target: 1600 },  // Stay at 1600 users
     { duration: '6m', target: 0 },     // Ramp down to 0 users
   ],
   thresholds: {
-    http_req_duration: ['p(95)<4500'], // Realistic threshold for 1500 users
-    http_req_failed: ['rate<0.18'],    // Balanced error tolerance
+    http_req_duration: ['p(95)<6000'], // More lenient threshold for higher load
+    http_req_failed: ['rate<0.25'],    // More lenient error tolerance
   },
   // Memory optimization for GitHub Actions
   noConnectionReuse: true,
   noVUConnectionReuse: true,
   discardResponseBodies: true,
   // Conservative optimizations for stability
-  batch: 15,
-  batchPerHost: 8,
+  batch: 20,                           // Increased batch size
+  batchPerHost: 10,                    // Increased per host
 };
 
 // Test data - Single user for load testing

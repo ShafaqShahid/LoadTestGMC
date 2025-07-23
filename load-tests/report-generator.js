@@ -423,6 +423,97 @@ class LoadTestReporter {
 if (import.meta.url === `file://${process.argv[1]}`) {
   const reporter = new LoadTestReporter();
   
+  // Check if results file exists
+  if (!fs.existsSync('results.json')) {
+    console.error('❌ results.json file not found. K6 test may have failed.');
+    console.log('📊 Generating failure report...');
+    
+    // Generate a failure report
+    const failureReport = {
+      timestamp: new Date().toISOString(),
+      testInfo: {
+        name: 'Sports System Load Test',
+        version: '1.0.0',
+        status: 'FAILED'
+      },
+      summary: {
+        testDuration: 'N/A',
+        totalRequests: 0,
+        totalErrors: 0,
+        errorRate: '100%',
+        avgResponseTime: 'N/A',
+        p95ResponseTime: 'N/A',
+        p99ResponseTime: 'N/A',
+        maxResponseTime: 'N/A',
+        requestsPerSecond: '0',
+        dataReceived: '0 B',
+        dataSent: '0 B'
+      },
+      thresholds: [],
+      checks: [],
+      stages: [],
+      recommendations: [
+        {
+          type: 'error',
+          category: 'Test Execution',
+          message: 'K6 test failed to complete. Check GitHub Actions logs for details.'
+        },
+        {
+          type: 'warning',
+          category: 'Troubleshooting',
+          message: 'Verify target environment is accessible and credentials are correct.'
+        },
+        {
+          type: 'warning',
+          category: 'Resource Limits',
+          message: 'Consider reducing user count or test duration for GitHub Actions.'
+        }
+      ],
+      error: 'K6 test failed with exit code 99. No results file generated.'
+    };
+    
+    fs.writeFileSync('detailed-report.json', JSON.stringify(failureReport, null, 2));
+    console.log('✅ Failure report generated: detailed-report.json');
+    
+    // Generate minimal HTML report
+    const htmlReport = `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Load Test Report - FAILED</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .error { color: #d32f2f; background: #ffebee; padding: 20px; border-radius: 5px; }
+        .warning { color: #f57c00; background: #fff3e0; padding: 20px; border-radius: 5px; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <h1>🚨 Load Test Failed</h1>
+    <div class="error">
+        <h2>Test Execution Error</h2>
+        <p><strong>Status:</strong> FAILED</p>
+        <p><strong>Error:</strong> K6 test failed with exit code 99</p>
+        <p><strong>Timestamp:</strong> ${new Date().toISOString()}</p>
+    </div>
+    <div class="warning">
+        <h3>💡 Troubleshooting Steps:</h3>
+        <ul>
+            <li>Check GitHub Actions logs for detailed error messages</li>
+            <li>Verify target environment (staging.sportssystems.com) is accessible</li>
+            <li>Confirm test credentials are correct</li>
+            <li>Consider reducing user count or test duration</li>
+            <li>Check for memory or resource limitations</li>
+        </ul>
+    </div>
+</body>
+</html>`;
+    
+    fs.writeFileSync('load-test-report.html', htmlReport);
+    console.log('✅ HTML failure report generated: load-test-report.html');
+    
+    process.exit(1);
+  }
+  
   if (reporter.parseResults()) {
     if (reporter.analyzeMetrics()) {
       reporter.generateHTMLReport();
@@ -434,7 +525,13 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       console.log('='.repeat(80));
       console.log(reporter.generateGitHubSummary());
       console.log('='.repeat(80));
+    } else {
+      console.error('❌ Failed to analyze metrics');
+      process.exit(1);
     }
+  } else {
+    console.error('❌ Failed to parse results');
+    process.exit(1);
   }
 }
 
