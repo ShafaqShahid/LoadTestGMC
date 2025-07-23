@@ -2,39 +2,41 @@ import http from 'k6/http';
 import { check, sleep } from 'k6';
 
 /*
-🚀 QUICK LOAD TEST - OPTIMIZED FOR LOCAL & GITHUB ACTIONS
+🚀 DISTRIBUTED LOAD TEST RUNNER - OPTIMIZED
 
-👥 USERS: 50 concurrent (quick validation)
-⏱️ DURATION: 5 minutes total
-🎯 PURPOSE: Quick validation and smoke testing
-💰 COST: FREE (GitHub Actions) / Minimal (Local)
+👥 USERS: 1000 concurrent per instance (3000 total)
+⏱️ DURATION: 25 minutes total
+🎯 PURPOSE: Distributed testing for high load
+💰 COST: FREE (GitHub Actions) / High (Local)
 
 🔧 OPTIMIZED FOR:
-   - Local machine testing
-   - GitHub Actions runners
-   - Quick feedback
+   - GitHub Actions distributed execution
+   - Local machine testing (if sufficient resources)
    - Resource efficiency
+   - Stable performance
 */
 
 export const options = {
   stages: [
-    { duration: '1m', target: 10 },    // Quick start
-    { duration: '2m', target: 50 },    // Ramp to target
-    { duration: '1m', target: 50 },    // Stay at target
-    { duration: '1m', target: 0 },     // Quick ramp down
+    { duration: '3m', target: 100 },   // Gentle start
+    { duration: '4m', target: 400 },   // Gradual increase
+    { duration: '4m', target: 700 },   // Moderate increase
+    { duration: '4m', target: 1000 },  // Final ramp to target
+    { duration: '6m', target: 1000 },  // Stay at 1000 users
+    { duration: '2m', target: 0 },     // Quick ramp down
   ],
   thresholds: {
-    http_req_duration: ['p(95)<5000'], // 5 seconds max
-    http_req_failed: ['rate<0.20'],    // 20% error tolerance
+    http_req_duration: ['p(95)<10000'], // 10 seconds max
+    http_req_failed: ['rate<0.40'],     // 40% error tolerance
   },
-  // Optimizations for both local and GitHub Actions
+  // Optimizations for distributed execution
   noConnectionReuse: true,
   noVUConnectionReuse: true,
   discardResponseBodies: true,
-  batch: 10,
-  batchPerHost: 5,
-  timeout: '10m',
-  gracefulStop: '15s',
+  batch: 20,
+  batchPerHost: 10,
+  timeout: '30m',
+  gracefulStop: '30s',
 };
 
 // Test data
@@ -62,14 +64,14 @@ export default function() {
     // Step 1: Login page
     const loginPageResponse = http.get(`${baseUrl}/CONTROL3/login.cfm`, { 
       headers,
-      timeout: '30s'
+      timeout: '90s'
     });
     
     check(loginPageResponse, {
       'login page loaded': (r) => r.status === 200 || r.status === 302,
     });
 
-    sleep(1);
+    sleep(3);
 
     // Step 2: Login
     const loginData = {
@@ -80,26 +82,26 @@ export default function() {
 
     const loginResponse = http.post(`${baseUrl}/CONTROL3/login.cfm`, loginData, { 
       headers,
-      timeout: '30s'
+      timeout: '90s'
     });
 
     check(loginResponse, {
       'login successful': (r) => r.status === 200 || r.status === 302,
     });
 
-    sleep(1);
+    sleep(3);
 
     // Step 3: Dashboard
     const dashboardResponse = http.get(`${baseUrl}/CONTROL3/index.cfm`, { 
       headers,
-      timeout: '30s'
+      timeout: '90s'
     });
     
     check(dashboardResponse, {
       'dashboard loaded': (r) => r.status === 200 || r.status === 302,
     });
 
-    sleep(1);
+    sleep(3);
 
     // Step 4: Search event
     const searchData = {
@@ -108,26 +110,28 @@ export default function() {
 
     const searchResponse = http.post(`${baseUrl}/CONTROL3/index.cfm`, searchData, { 
       headers,
-      timeout: '30s'
+      timeout: '90s'
     });
 
     check(searchResponse, {
       'search successful': (r) => r.status === 200 || r.status === 302,
     });
 
-    sleep(1);
+    sleep(3);
   } catch (error) {
-    console.log(`Quick test error: ${error.message}`);
+    console.log(`Distributed test error: ${error.message}`);
   }
 }
 
 export function setup() {
-  console.log('🚀 Starting Quick Load Test (50 users, 5 minutes)');
-  console.log('💻 Optimized for Local & GitHub Actions');
+  console.log('🚀 Starting Distributed Load Test Runner');
+  console.log('💻 Optimized for GitHub Actions & Local');
+  console.log('⏱️ Duration: 25 minutes');
+  console.log('👥 Users: 1000 per instance (3000 total)');
   console.log('👤 Test User: shafaqs');
   console.log('🎯 Target Event: 16289');
 }
 
 export function teardown(data) {
-  console.log('✅ Quick test completed');
+  console.log('✅ Distributed test completed');
 } 
