@@ -164,10 +164,31 @@ class LargeResultMerger {
     
     // Process files sequentially to avoid memory issues
     for (const filePath of inputFiles) {
-      if (fs.existsSync(filePath)) {
-        await this.processFile(filePath);
+      // Try multiple possible file paths
+      const possiblePaths = [
+        filePath,
+        filePath.replace('/distributed-', '/distributed-1-results/distributed-'),
+        filePath.replace('/distributed-', '/distributed-2-results/distributed-'),
+        filePath.replace('/distributed-', '/distributed-3-results/distributed-'),
+        filePath.replace('distributed-1-results.json', 'distributed-1-results/distributed-1-results.json'),
+        filePath.replace('distributed-2-results.json', 'distributed-2-results/distributed-2-results.json'),
+        filePath.replace('distributed-3-results.json', 'distributed-3-results/distributed-3-results.json')
+      ];
+      
+      let foundFile = null;
+      for (const path of possiblePaths) {
+        if (fs.existsSync(path)) {
+          foundFile = path;
+          break;
+        }
+      }
+      
+      if (foundFile) {
+        console.log(`✅ Found file: ${foundFile}`);
+        await this.processFile(foundFile);
       } else {
         console.warn(`⚠️ File not found: ${filePath}`);
+        console.warn(`🔍 Tried paths: ${possiblePaths.join(', ')}`);
       }
     }
     
