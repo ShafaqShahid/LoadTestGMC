@@ -96,13 +96,11 @@ jobs:
           1500-report.html
         retention-days: 30
 
-  distributed-test:
+  # 🧠 3 Parallel Distributed Test Jobs
+  distributed-test-1:
     if: github.event.inputs.test_type == 'distributed'
     runs-on: ubuntu-latest
-    timeout-minutes: 35
-    strategy:
-      matrix:
-        instance: [1, 2, 3]
+    timeout-minutes: 60
     
     steps:
     - name: Checkout code
@@ -123,26 +121,229 @@ jobs:
         sudo apt-get update
         sudo apt-get install k6
         
-    - name: Run Distributed Test
-      run: k6 run load-tests/distributed-runner.js --out json=distributed-${{ matrix.instance }}-results.json
-      
-    - name: Upload Results
+    - name: Run Distributed Test Part 1 (1000 VUs)
+      run: |
+        echo "🚀 Starting distributed test part 1 with 1000 virtual users..."
+        k6 run load-tests/distributed-runner.js \
+          --out json=distributed-1-results.json \
+          --env VUS=1000 \
+          --env DURATION=45m
+        
+    - name: Upload Results Part 1
       uses: actions/upload-artifact@v4
       if: always()
       with:
-        name: distributed-${{ matrix.instance }}-results
-        path: distributed-${{ matrix.instance }}-results.json
+        name: distributed-1-results
+        path: distributed-1-results.json
         retention-days: 30
 
+  distributed-test-2:
+    if: github.event.inputs.test_type == 'distributed'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        
+    - name: Install dependencies
+      run: npm install
+      
+    - name: Install k6
+      run: |
+        sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+        echo "deb https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+        sudo apt-get update
+        sudo apt-get install k6
+        
+    - name: Run Distributed Test Part 2 (1000 VUs)
+      run: |
+        echo "🚀 Starting distributed test part 2 with 1000 virtual users..."
+        k6 run load-tests/distributed-runner.js \
+          --out json=distributed-2-results.json \
+          --env VUS=1000 \
+          --env DURATION=45m
+        
+    - name: Upload Results Part 2
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: distributed-2-results
+        path: distributed-2-results.json
+        retention-days: 30
+
+  distributed-test-3:
+    if: github.event.inputs.test_type == 'distributed'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        
+    - name: Install dependencies
+      run: npm install
+      
+    - name: Install k6
+      run: |
+        sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+        echo "deb https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+        sudo apt-get update
+        sudo apt-get install k6
+        
+    - name: Run Distributed Test Part 3 (1000 VUs)
+      run: |
+        echo "🚀 Starting distributed test part 3 with 1000 virtual users..."
+        k6 run load-tests/distributed-runner.js \
+          --out json=distributed-3-results.json \
+          --env VUS=1000 \
+          --env DURATION=45m
+        
+    - name: Upload Results Part 3
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: distributed-3-results
+        path: distributed-3-results.json
+        retention-days: 30
+
+  # 🧩 Post-processing Job for Distributed Tests
+  post-processing:
+    if: github.event.inputs.test_type == 'distributed'
+    runs-on: ubuntu-latest
+    needs: [distributed-test-1, distributed-test-2, distributed-test-3]
+    timeout-minutes: 30
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        
+    - name: Install dependencies
+      run: npm install
+      
+    - name: Install Puppeteer for PDF generation
+      run: npm install puppeteer
+      
+    - name: Download all distributed test results
+      uses: actions/download-artifact@v4
+      with:
+        path: outputs/
+        
+    - name: Create outputs directory
+      run: mkdir -p outputs
+      
+    - name: List downloaded artifacts
+      run: |
+        echo "📁 Downloaded artifacts:"
+        find outputs/ -name "*.json" -type f
+        echo "📊 Total files found:"
+        find outputs/ -name "*.json" -type f | wc -l
+        
+    - name: Merge large result files
+      run: |
+        echo "🧠 Starting memory-efficient merge of large result files..."
+        node load-tests/mergeLargeResults.js \
+          outputs/combined-results.json \
+          outputs/distributed-1-results.json \
+          outputs/distributed-2-results.json \
+          outputs/distributed-3-results.json
+        
+    - name: Generate comprehensive HTML summary
+      run: |
+        echo "📊 Generating detailed HTML summary..."
+        node load-tests/summarize.js \
+          outputs/combined-results.json \
+          outputs/load-test-summary.html
+        
+    - name: Generate PDF report
+      run: |
+        echo "📄 Generating PDF report..."
+        node load-tests/generate-pdf.js --styled \
+          outputs/load-test-summary.html \
+          outputs/load-test-report.pdf
+        
+    - name: Upload final combined results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: distributed-test-final-report
+        path: |
+          outputs/combined-results.json
+          outputs/load-test-summary.html
+          outputs/load-test-report.pdf
+        retention-days: 30
+        
+    - name: Generate workflow summary
+      run: |
+        echo "## 🚀 Distributed Load Test Results" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📊 Test Configuration" >> $GITHUB_STEP_SUMMARY
+        echo "- **Total Virtual Users:** 3000 (3 × 1000 VUs)" >> $GITHUB_STEP_SUMMARY
+        echo "- **Test Duration:** 45 minutes per part" >> $GITHUB_STEP_SUMMARY
+        echo "- **Total Test Time:** ~45 minutes (parallel execution)" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📁 Generated Reports" >> $GITHUB_STEP_SUMMARY
+        echo "- **Combined Results:** `combined-results.json`" >> $GITHUB_STEP_SUMMARY
+        echo "- **HTML Summary:** `load-test-summary.html`" >> $GITHUB_STEP_SUMMARY
+        echo "- **PDF Report:** `load-test-report.pdf`" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📈 Key Features" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Memory-efficient processing of 4.5GB+ files" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Detailed error analysis and patterns" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Performance percentile calculations" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Interactive charts and visualizations" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Professional PDF reports" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "📋 **Results available in artifacts:** distributed-test-final-report" >> $GITHUB_STEP_SUMMARY
+
+  # 📋 Summary Job for All Test Types
   summary:
     runs-on: ubuntu-latest
-    needs: [quick-test, test-1500, distributed-test]
+    needs: [quick-test, test-1500, post-processing]
     if: always()
     
     steps:
-    - name: Generate summary
+    - name: Generate comprehensive summary
       run: |
-        echo "## Load Test Results Summary" >> $GITHUB_STEP_SUMMARY
-        echo "- Test Type: ${{ github.event.inputs.test_type }}" >> $GITHUB_STEP_SUMMARY
-        echo "- Status: ${{ needs.quick-test.result || needs.test-1500.result || needs.distributed-test.result }}" >> $GITHUB_STEP_SUMMARY
-        echo "- Results available in artifacts" >> $GITHUB_STEP_SUMMARY 
+        echo "## 📊 Load Test Results Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 🎯 Test Type: ${{ github.event.inputs.test_type }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        if [ "${{ github.event.inputs.test_type }}" = "quick" ]; then
+          echo "### ⚡ Quick Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status:** ${{ needs.quick-test.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Artifacts:** quick-test-results" >> $GITHUB_STEP_SUMMARY
+        elif [ "${{ github.event.inputs.test_type }}" = "1500" ]; then
+          echo "### 🔥 1500 Users Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status:** ${{ needs.test-1500.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Artifacts:** 1500-test-results" >> $GITHUB_STEP_SUMMARY
+        elif [ "${{ github.event.inputs.test_type }}" = "distributed" ]; then
+          echo "### 🌐 Distributed Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status:** ${{ needs.post-processing.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Artifacts:** distributed-test-final-report" >> $GITHUB_STEP_SUMMARY
+          echo "- **Individual Results:** distributed-1-results, distributed-2-results, distributed-3-results" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📋 Available Reports" >> $GITHUB_STEP_SUMMARY
+        echo "- 📊 JSON Results (raw data)" >> $GITHUB_STEP_SUMMARY
+        echo "- 🌐 HTML Summary (interactive)" >> $GITHUB_STEP_SUMMARY
+        echo "- 📄 PDF Report (printable)" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "📥 **Download artifacts from the Actions tab to view detailed results**" >> $GITHUB_STEP_SUMMARY 
