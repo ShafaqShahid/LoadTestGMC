@@ -90,13 +90,25 @@ class LargeResultMerger {
    * Process individual data points from the stream
    */
   processDataPoint(data) {
-    // Handle metrics
-    if (data.type === 'Metric') {
+    // Handle k6 JSON output format
+    if (data.metric && data.data) {
+      // This is a k6 metric point
+      this.updateMetrics(data);
+    } else if (data.type === 'Point') {
+      // Alternative k6 format
+      this.updateMetrics(data);
+    } else if (data.type === 'Metric') {
+      // Another k6 format variant
+      this.updateMetrics(data);
+    } else if (data.metric && data.value !== undefined) {
+      // Direct metric format
       this.updateMetrics(data);
     }
     
-    // Handle errors
-    if (data.type === 'Point' && data.metric === 'http_req_failed') {
+    // Handle errors - multiple possible formats
+    if ((data.type === 'Point' && data.metric === 'http_req_failed') ||
+        (data.metric === 'http_req_failed' && data.data && data.data.value > 0) ||
+        (data.metric === 'http_req_failed' && data.value > 0)) {
       this.errorDetails.push({
         timestamp: data.time,
         value: data.value,
@@ -127,29 +139,43 @@ class LargeResultMerger {
     if (this.combinedMetrics[metricName]) {
       const metric = this.combinedMetrics[metricName];
       
-      if (data.data) {
+      // Handle different k6 output formats
+      let metricData = data.data || data;
+      
+      if (metricData) {
         // Handle aggregated metrics
-        metric.count = (metric.count || 0) + (data.data.count || 0);
-        metric.rate = (metric.rate || 0) + (data.data.rate || 0);
+        metric.count = (metric.count || 0) + (metricData.count || 0);
+        metric.rate = (metric.rate || 0) + (metricData.rate || 0);
         
-        if (data.data.avg !== undefined) {
+        if (metricData.avg !== undefined) {
           // Calculate weighted average for response times
-          const currentTotal = metric.avg * (metric.count - (data.data.count || 0));
-          const newTotal = data.data.avg * (data.data.count || 0);
+          const currentTotal = metric.avg * (metric.count - (metricData.count || 0));
+          const newTotal = metricData.avg * (metricData.count || 0);
           metric.avg = (currentTotal + newTotal) / metric.count;
         }
         
         // Update percentiles (simplified approach)
-        if (data.data.p90 !== undefined) metric.p90 = Math.max(metric.p90 || 0, data.data.p90);
-        if (data.data.p95 !== undefined) metric.p95 = Math.max(metric.p95 || 0, data.data.p95);
-        if (data.data.p99 !== undefined) metric.p99 = Math.max(metric.p99 || 0, data.data.p99);
+        if (metricData.p90 !== undefined) metric.p90 = Math.max(metric.p90 || 0, metricData.p90);
+        if (metricData.p95 !== undefined) metric.p95 = Math.max(metric.p95 || 0, metricData.p95);
+        if (metricData.p99 !== undefined) metric.p99 = Math.max(metric.p99 || 0, metricData.p99);
         
         // Update min/max
-        if (data.data.min !== undefined) {
-          metric.min = metric.min === 0 ? data.data.min : Math.min(metric.min, data.data.min);
+        if (metricData.min !== undefined) {
+          metric.min = metric.min === 0 ? metricData.min : Math.min(metric.min, metricData.min);
         }
-        if (data.data.max !== undefined) {
-          metric.max = Math.max(metric.max || 0, data.data.max);
+        if (metricData.max !== undefined) {
+          metric.max = Math.max(metric.max || 0, metricData.max);
+        }
+      }
+      
+      // Handle direct value format
+      if (data.value !== undefined) {
+        metric.count = (metric.count || 0) + 1;
+        if (metricName === 'http_req_duration') {
+          // For response times, accumulate for average calculation
+          if (!metric._values) metric._values = [];
+          metric._values.push(data.value);
+          metric.avg = metric._values.reduce((a, b) => a + b, 0) / metric._values.length;
         }
       }
     }
@@ -217,6 +243,14 @@ class LargeResultMerger {
     // Calculate performance percentiles
     const performanceStats = this.calculatePerformanceStats();
     
+    // Safely format metrics with fallbacks
+    const safeFormat = (value, defaultValue = '0.00') => {
+      if (value === undefined || value === null || isNaN(value)) {
+        return defaultValue;
+      }
+      return typeof value === 'number' ? value.toFixed(2) : value.toString();
+    };
+    
     return {
       metadata: {
         totalFiles: this.totalFiles,
@@ -227,11 +261,11 @@ class LargeResultMerger {
       summary: {
         totalRequests,
         totalErrors,
-        errorRate: errorRate.toFixed(2) + '%',
-        avgResponseTime: this.combinedMetrics.http_req_duration.avg.toFixed(2) + 'ms',
-        p95ResponseTime: this.combinedMetrics.http_req_duration.p95.toFixed(2) + 'ms',
-        p99ResponseTime: this.combinedMetrics.http_req_duration.p99.toFixed(2) + 'ms',
-        requestsPerSecond: this.combinedMetrics.http_reqs.rate.toFixed(2),
+        errorRate: safeFormat(errorRate) + '%',
+        avgResponseTime: safeFormat(this.combinedMetrics.http_req_duration.avg, '0.00') + 'ms',
+        p95ResponseTime: safeFormat(this.combinedMetrics.http_req_duration.p95, '0.00') + 'ms',
+        p99ResponseTime: safeFormat(this.combinedMetrics.http_req_duration.p99, '0.00') + 'ms',
+        requestsPerSecond: safeFormat(this.combinedMetrics.http_reqs.rate, '0.00'),
         totalIterations: this.combinedMetrics.iterations.count || 0,
         dataTransferred: {
           received: this.formatBytes(this.combinedMetrics.data_received.count || 0),
