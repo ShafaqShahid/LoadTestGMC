@@ -414,6 +414,40 @@ class BulletproofSummarizer {
    */
   generateOverviewSection() {
     const summary = this.data.summary || {};
+    const errors = this.data.errors || {};
+    const statusCodes = errors.byStatus || {};
+    
+    // Calculate accurate rates based on proper HTTP status categorization
+    const successCodes = [200, 201, 202, 204, 206];
+    const redirectCodes = [301, 302, 303, 307, 308];
+    const errorCodes = [400, 401, 403, 404, 405, 408, 409, 410, 422, 429, 500, 501, 502, 503, 504, 505];
+    
+    let totalSuccess = 0;
+    let totalRedirects = 0;
+    let totalActualErrors = 0;
+    let totalNetworkErrors = 0;
+    
+    Object.entries(statusCodes).forEach(([status, count]) => {
+      const statusNum = parseInt(status);
+      if (successCodes.includes(statusNum)) {
+        totalSuccess += count;
+      } else if (redirectCodes.includes(statusNum)) {
+        totalRedirects += count;
+      } else if (errorCodes.includes(statusNum)) {
+        totalActualErrors += count;
+      } else if (status === '0') {
+        totalNetworkErrors += count;
+      } else if (status === 'unknown') {
+        totalActualErrors += count;
+      }
+    });
+    
+    const totalRequests = totalSuccess + totalRedirects + totalActualErrors + totalNetworkErrors;
+    const successfulRequests = totalSuccess + totalRedirects;
+    const allErrors = totalActualErrors + totalNetworkErrors;
+    
+    const actualSuccessRate = totalRequests > 0 ? ((successfulRequests / totalRequests) * 100).toFixed(2) : '0.00';
+    const actualErrorRate = totalRequests > 0 ? ((allErrors / totalRequests) * 100).toFixed(2) : '0.00';
     
     return `
     <div class="section">
@@ -428,14 +462,28 @@ class BulletproofSummarizer {
                 <div class="stat-label">Total Requests</div>
             </div>
             
-            <div class="stat-card ${(parseFloat(summary.errorRate) || 0) > 40 ? 'error-card' : 'warning-card'}">
-                <div class="stat-value">${(summary.totalErrors || 0).toLocaleString()}</div>
-                <div class="stat-label">Total Errors</div>
+            <div class="stat-card success-card">
+                <div class="stat-value">${successfulRequests.toLocaleString()}</div>
+                <div class="stat-label">Successful Requests</div>
+                <div style="font-size: 0.8em; margin-top: 5px; opacity: 0.8;">Success + Redirects</div>
             </div>
             
-            <div class="stat-card ${(parseFloat(summary.errorRate) || 0) > 40 ? 'error-card' : 'success-card'}">
-                <div class="stat-value">${summary.errorRate || '0.00%'}</div>
-                <div class="stat-label">Error Rate</div>
+            <div class="stat-card ${parseFloat(actualErrorRate) > 40 ? 'error-card' : parseFloat(actualErrorRate) > 20 ? 'warning-card' : 'success-card'}">
+                <div class="stat-value">${actualSuccessRate}%</div>
+                <div class="stat-label">Actual Success Rate</div>
+                <div style="font-size: 0.8em; margin-top: 5px; opacity: 0.8;">Including Redirects</div>
+            </div>
+            
+            <div class="stat-card ${parseFloat(actualErrorRate) > 40 ? 'error-card' : parseFloat(actualErrorRate) > 20 ? 'warning-card' : 'success-card'}">
+                <div class="stat-value">${allErrors.toLocaleString()}</div>
+                <div class="stat-label">Actual Errors</div>
+                <div style="font-size: 0.8em; margin-top: 5px; opacity: 0.8;">4xx/5xx + Network</div>
+            </div>
+            
+            <div class="stat-card ${parseFloat(actualErrorRate) > 40 ? 'error-card' : parseFloat(actualErrorRate) > 20 ? 'warning-card' : 'success-card'}">
+                <div class="stat-value">${actualErrorRate}%</div>
+                <div class="stat-label">Actual Error Rate</div>
+                <div style="font-size: 0.8em; margin-top: 5px; opacity: 0.8;">Excludes Redirects</div>
             </div>
             
             <div class="stat-card">
@@ -461,6 +509,26 @@ class BulletproofSummarizer {
             <div class="stat-card">
                 <div class="stat-value">${summary.dataSent || '0 B'}</div>
                 <div class="stat-label">Data Sent</div>
+            </div>
+        </div>
+        
+        <div class="config-card" style="margin-top: 30px; background: #f0f8ff; border-left-color: #3498db;">
+            <div class="config-title">📊 HTTP Status Code Breakdown</div>
+            <div class="metric-row">
+                <span class="metric-label">✅ HTTP 2xx (Success):</span>
+                <span class="metric-value">${totalSuccess.toLocaleString()} (${totalRequests > 0 ? ((totalSuccess / totalRequests) * 100).toFixed(1) : '0.0'}%)</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">🔄 HTTP 3xx (Redirects):</span>
+                <span class="metric-value">${totalRedirects.toLocaleString()} (${totalRequests > 0 ? ((totalRedirects / totalRequests) * 100).toFixed(1) : '0.0'}%)</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">❌ HTTP 4xx/5xx (Errors):</span>
+                <span class="metric-value">${totalActualErrors.toLocaleString()} (${totalRequests > 0 ? ((totalActualErrors / totalRequests) * 100).toFixed(1) : '0.0'}%)</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">🔌 Network Failures:</span>
+                <span class="metric-value">${totalNetworkErrors.toLocaleString()} (${totalRequests > 0 ? ((totalNetworkErrors / totalRequests) * 100).toFixed(1) : '0.0'}%)</span>
             </div>
         </div>
     </div>`;
@@ -640,47 +708,151 @@ class BulletproofSummarizer {
     const statusCodes = errors.byStatus || {};
     const errorSamples = errors.samples || [];
     
+    // Categorize status codes properly
+    const successCodes = { '200': 0, '201': 0, '202': 0, '204': 0, '206': 0 };
+    const redirectCodes = { '301': 0, '302': 0, '303': 0, '307': 0, '308': 0 };
+    const clientErrorCodes = { '400': 0, '401': 0, '403': 0, '404': 0, '405': 0, '408': 0, '409': 0, '410': 0, '422': 0, '429': 0 };
+    const serverErrorCodes = { '500': 0, '501': 0, '502': 0, '503': 0, '504': 0, '505': 0 };
+    const networkErrorCodes = { '0': 0 };
+    const unknownCodes = { 'unknown': 0 };
+    
+    // Categorize actual status codes
+    Object.entries(statusCodes).forEach(([status, count]) => {
+      if (successCodes.hasOwnProperty(status)) {
+        successCodes[status] = count;
+      } else if (redirectCodes.hasOwnProperty(status)) {
+        redirectCodes[status] = count;
+      } else if (clientErrorCodes.hasOwnProperty(status)) {
+        clientErrorCodes[status] = count;
+      } else if (serverErrorCodes.hasOwnProperty(status)) {
+        serverErrorCodes[status] = count;
+      } else if (networkErrorCodes.hasOwnProperty(status)) {
+        networkErrorCodes[status] = count;
+      } else if (unknownCodes.hasOwnProperty(status)) {
+        unknownCodes[status] = count;
+      }
+    });
+    
+    // Calculate totals
+    const totalSuccess = Object.values(successCodes).reduce((sum, count) => sum + count, 0);
+    const totalRedirects = Object.values(redirectCodes).reduce((sum, count) => sum + count, 0);
+    const totalClientErrors = Object.values(clientErrorCodes).reduce((sum, count) => sum + count, 0);
+    const totalServerErrors = Object.values(serverErrorCodes).reduce((sum, count) => sum + count, 0);
+    const totalNetworkErrors = Object.values(networkErrorCodes).reduce((sum, count) => sum + count, 0);
+    const totalUnknownErrors = Object.values(unknownCodes).reduce((sum, count) => sum + count, 0);
+    
+    const totalRequests = totalSuccess + totalRedirects + totalClientErrors + totalServerErrors + totalNetworkErrors + totalUnknownErrors;
+    const actualErrors = totalClientErrors + totalServerErrors + totalNetworkErrors + totalUnknownErrors;
+    const successfulRequests = totalSuccess + totalRedirects;
+    
+    const actualErrorRate = totalRequests > 0 ? ((actualErrors / totalRequests) * 100).toFixed(2) : '0.00';
+    const successRate = totalRequests > 0 ? ((successfulRequests / totalRequests) * 100).toFixed(2) : '0.00';
+    
     return `
     <div class="section">
         <h2 class="section-title">
-            <span class="icon">❌</span>
-            Error Analysis
+            <span class="icon">📊</span>
+            Accurate Response Analysis
         </h2>
         
         <div class="config-grid">
-            <div class="error-details">
-                <div class="config-title">🔥 Top Error Types</div>
-                ${topErrors.length > 0 ? topErrors.map(error => `
-                    <div class="metric-row">
-                        <span class="metric-label">${error.type.replace(/_/g, ' ').toUpperCase()}:</span>
-                        <span class="metric-value">${error.count.toLocaleString()} (${error.percentage}%)</span>
-                    </div>
-                `).join('') : '<p>No error type data available.</p>'}
+            <div class="config-card success-card" style="border-left-color: #27ae60;">
+                <div class="config-title">✅ Successful Responses</div>
+                <div class="metric-row">
+                    <span class="metric-label">Success Rate:</span>
+                    <span class="metric-value" style="color: #27ae60; font-weight: bold;">${successRate}%</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Total Successful:</span>
+                    <span class="metric-value">${successfulRequests.toLocaleString()} requests</span>
+                </div>
+                <div style="margin-top: 10px; font-size: 0.9em; color: #666;">
+                    <div>• HTTP 2xx (Success): ${totalSuccess.toLocaleString()}</div>
+                    <div>• HTTP 3xx (Redirects): ${totalRedirects.toLocaleString()}</div>
+                </div>
             </div>
             
-                         <div class="error-details">
-                 <div class="config-title">📊 Status Code Distribution</div>
-                 ${Object.keys(statusCodes).length > 0 ? (() => {
-                     const totalRequests = Object.values(statusCodes).reduce((sum, count) => sum + count, 0);
-                     return Object.entries(statusCodes)
-                         .sort((a, b) => b[1] - a[1])
-                         .slice(0, 10)
-                         .map(([status, count]) => {
-                             const percentage = totalRequests > 0 ? ((count / totalRequests) * 100).toFixed(1) : '0.0';
-                             return `
-                             <div class="metric-row">
-                                 <span class="metric-label">HTTP ${status}:</span>
-                                 <span class="metric-value">${count.toLocaleString()} (${percentage}%)</span>
-                             </div>
-                         `;
-                         }).join('');
-                 })() : '<p>No status code data available.</p>'}
-             </div>
+            <div class="config-card error-card" style="border-left-color: #e74c3c;">
+                <div class="config-title">❌ Actual Errors</div>
+                <div class="metric-row">
+                    <span class="metric-label">Error Rate:</span>
+                    <span class="metric-value" style="color: #e74c3c; font-weight: bold;">${actualErrorRate}%</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Total Errors:</span>
+                    <span class="metric-value">${actualErrors.toLocaleString()} requests</span>
+                </div>
+                <div style="margin-top: 10px; font-size: 0.9em; color: #666;">
+                    <div>• HTTP 4xx (Client): ${totalClientErrors.toLocaleString()}</div>
+                    <div>• HTTP 5xx (Server): ${totalServerErrors.toLocaleString()}</div>
+                    <div>• Network/Connection: ${totalNetworkErrors.toLocaleString()}</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="config-grid">
+            <div class="error-details">
+                <div class="config-title">✅ Success + Redirects (Working Correctly)</div>
+                ${Object.entries({...successCodes, ...redirectCodes})
+                    .filter(([status, count]) => count > 0)
+                    .sort((a, b) => b[1] - a[1])
+                    .map(([status, count]) => {
+                        const percentage = totalRequests > 0 ? ((count / totalRequests) * 100).toFixed(1) : '0.0';
+                        const label = status === '200' ? 'Success' :
+                                     status === '301' ? 'Permanent Redirect' :
+                                     status === '302' ? 'Temporary Redirect' :
+                                     status === '303' ? 'See Other' :
+                                     status === '307' ? 'Temporary Redirect' :
+                                     status === '308' ? 'Permanent Redirect' : 'Other Success';
+                        return `
+                        <div class="metric-row">
+                            <span class="metric-label">HTTP ${status} (${label}):</span>
+                            <span class="metric-value" style="color: #27ae60;">${count.toLocaleString()} (${percentage}%)</span>
+                        </div>
+                    `;
+                    }).join('')}
+            </div>
+            
+            <div class="error-details">
+                <div class="config-title">❌ Actual Errors (Need Investigation)</div>
+                ${Object.entries({...clientErrorCodes, ...serverErrorCodes, ...networkErrorCodes, ...unknownCodes})
+                    .filter(([status, count]) => count > 0)
+                    .sort((a, b) => b[1] - a[1])
+                    .map(([status, count]) => {
+                        const percentage = totalRequests > 0 ? ((count / totalRequests) * 100).toFixed(1) : '0.0';
+                        const label = status === '400' ? 'Bad Request' :
+                                     status === '401' ? 'Unauthorized' :
+                                     status === '403' ? 'Forbidden' :
+                                     status === '404' ? 'Not Found' :
+                                     status === '500' ? 'Internal Server Error' :
+                                     status === '502' ? 'Bad Gateway' :
+                                     status === '503' ? 'Service Unavailable' :
+                                     status === '504' ? 'Gateway Timeout' :
+                                     status === '0' ? 'Connection Failed' :
+                                     status === 'unknown' ? 'Unknown Error' : 'Other Error';
+                        return `
+                        <div class="metric-row">
+                            <span class="metric-label">HTTP ${status} (${label}):</span>
+                            <span class="metric-value" style="color: #e74c3c;">${count.toLocaleString()} (${percentage}%)</span>
+                        </div>
+                    `;
+                    }).join('')}
+            </div>
+        </div>
+        
+        <div class="config-card">
+            <div class="config-title">🔥 Error Type Breakdown</div>
+            ${topErrors.length > 0 ? topErrors.map(error => `
+                <div class="metric-row">
+                    <span class="metric-label">${error.type.replace(/_/g, ' ').toUpperCase()}:</span>
+                    <span class="metric-value">${error.count.toLocaleString()} (${error.percentage}%)</span>
+                </div>
+            `).join('') : '<p>No error type data available.</p>'}
         </div>
         
         ${errorSamples.length > 0 ? `
         <div class="config-card">
-            <div class="config-title">🔍 Error Samples (First 20)</div>
+            <div class="config-title">🔍 Error Samples (First 20 Actual Errors)</div>
             <div class="table-container">
                 <table class="error-table">
                     <thead>
@@ -698,7 +870,7 @@ class BulletproofSummarizer {
                             <tr>
                                 <td>${new Date(error.timestamp).toLocaleTimeString()}</td>
                                 <td><code>${error.type || 'unknown'}</code></td>
-                                <td><code>${error.status || 'N/A'}</code></td>
+                                <td><code style="color: #e74c3c;">${error.status || 'N/A'}</code></td>
                                 <td><code>${error.method || 'N/A'}</code></td>
                                 <td class="url-cell"><code>${error.url || 'N/A'}</code></td>
                                 <td>${error.error || 'N/A'}</td>
