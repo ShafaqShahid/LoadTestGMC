@@ -241,8 +241,8 @@ class BulletproofResultMerger {
     }
     
     // Ensure we have at least some data
-    const totalRequests = calculatedMetrics.http_reqs.count || this.validLines || 0;
-    const totalErrors = calculatedMetrics.http_req_failed.count || this.errors.length || 0;
+    const totalRequests = calculatedMetrics.http_reqs.count || 0;
+    const totalErrors = calculatedMetrics.http_req_failed.count || 0;
     const errorRate = totalRequests > 0 ? (totalErrors / totalRequests) * 100 : 0;
     
     // Create a safe summary that never fails

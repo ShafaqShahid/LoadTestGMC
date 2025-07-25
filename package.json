@@ -12,7 +12,8 @@
     "merge-large-results": "node load-tests/mergeLargeResults-bulletproof.js",
     "generate-summary": "node load-tests/summarize-bulletproof.js",
     "generate-pdf": "node load-tests/generate-pdf.js",
-    "process-distributed": "npm run merge-large-results && npm run generate-summary && npm run generate-pdf"
+    "process-distributed": "npm run merge-large-results && npm run generate-summary && npm run generate-pdf",
+    "test-reports": "node test-reports.js"
   },
   "keywords": [
     "load-testing",

@@ -70,7 +70,7 @@ class PDFGenerator {
       await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
       
       // Wait for charts to be fully rendered
-      await page.waitForTimeout(3000);
+      await new Promise(resolve => setTimeout(resolve, 3000));
       
       // Generate PDF
       const pdfOptions = {
@@ -136,7 +136,7 @@ class PDFGenerator {
       await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
       
       // Wait for charts
-      await page.waitForTimeout(3000);
+      await new Promise(resolve => setTimeout(resolve, 3000));
       
       // Generate PDF with print-optimized settings
       await page.pdf({
