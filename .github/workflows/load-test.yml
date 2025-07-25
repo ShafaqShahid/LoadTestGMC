@@ -307,9 +307,9 @@ jobs:
         echo "- **Total Test Time:** ~45 minutes (parallel execution)" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### 📁 Generated Reports" >> $GITHUB_STEP_SUMMARY
-        echo "- **Combined Results:** `combined-results.json`" >> $GITHUB_STEP_SUMMARY
-        echo "- **HTML Summary:** `load-test-summary.html`" >> $GITHUB_STEP_SUMMARY
-        echo "- **PDF Report:** `load-test-report.pdf`" >> $GITHUB_STEP_SUMMARY
+        echo "- **Combined Results:** combined-results.json" >> $GITHUB_STEP_SUMMARY
+        echo "- **HTML Summary:** load-test-summary.html" >> $GITHUB_STEP_SUMMARY
+        echo "- **PDF Report:** load-test-report.pdf" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### 📈 Key Features" >> $GITHUB_STEP_SUMMARY
         echo "- ✅ Memory-efficient processing of 4.5GB+ files" >> $GITHUB_STEP_SUMMARY
