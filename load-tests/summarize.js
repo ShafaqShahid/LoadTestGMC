@@ -152,7 +152,10 @@ class LoadTestSummarizer {
    * Generate errors HTML
    */
   generateErrorsHTML(errors) {
-    if (!errors || errors.totalErrors === 0) {
+    // Handle both old and new error formats
+    const errorCount = errors?.total || errors?.totalErrors || 0;
+    
+    if (!errors || errorCount === 0) {
       return `
         <div class="errors-section">
           <h3>✅ No Errors Detected</h3>
@@ -161,13 +164,26 @@ class LoadTestSummarizer {
       `;
     }
 
-    const topErrorsHTML = errors.topErrors.map(error => `
-      <div class="error-item">
-        <div class="error-type">${error.type}</div>
-        <div class="error-count">${error.count.toLocaleString()}</div>
-        <div class="error-percentage">${error.percentage}</div>
-      </div>
-    `).join('');
+    // Handle new format from robust merge
+    let topErrorsHTML = '';
+    if (errors.samples && errors.samples.length > 0) {
+      topErrorsHTML = errors.samples.map(error => `
+        <div class="error-item">
+          <div class="error-type">${error.tags?.error_code || error.tags?.status || 'timeout'}</div>
+          <div class="error-count">1</div>
+          <div class="error-percentage">${((1 / errorCount) * 100).toFixed(2)}%</div>
+        </div>
+      `).join('');
+    } else if (errors.topErrors && errors.topErrors.length > 0) {
+      // Handle old format
+      topErrorsHTML = errors.topErrors.map(error => `
+        <div class="error-item">
+          <div class="error-type">${error.type}</div>
+          <div class="error-count">${error.count.toLocaleString()}</div>
+          <div class="error-percentage">${error.percentage}</div>
+        </div>
+      `).join('');
+    }
 
     return `
       <div class="errors-section">
@@ -175,12 +191,12 @@ class LoadTestSummarizer {
         <div class="error-summary">
           <div class="error-total">
             <span class="label">Total Errors:</span>
-            <span class="value">${errors.totalErrors.toLocaleString()}</span>
+            <span class="value">${errorCount.toLocaleString()}</span>
           </div>
         </div>
         
         <div class="error-breakdown">
-          <h4>Top Error Types</h4>
+          <h4>Error Samples</h4>
           <div class="error-list">
             ${topErrorsHTML}
           </div>
@@ -255,14 +271,39 @@ class LoadTestSummarizer {
    * Generate error chart data
    */
   generateErrorChartData(errors) {
-    if (!errors || errors.totalErrors === 0) return { labels: [], data: [] };
+    const errorCount = errors?.total || errors?.totalErrors || 0;
+    if (!errors || errorCount === 0) return { labels: [], data: [] };
 
-    const topErrors = errors.topErrors.slice(0, 10);
-    return {
-      labels: topErrors.map(e => e.type),
-      data: topErrors.map(e => e.count),
-      percentages: topErrors.map(e => parseFloat(e.percentage))
-    };
+    // Handle new format from robust merge
+    if (errors.samples && errors.samples.length > 0) {
+      const errorTypes = {};
+      errors.samples.forEach(error => {
+        const type = error.tags?.error_code || error.tags?.status || 'timeout';
+        errorTypes[type] = (errorTypes[type] || 0) + 1;
+      });
+      
+      const topErrors = Object.entries(errorTypes)
+        .sort(([,a], [,b]) => b - a)
+        .slice(0, 10);
+      
+      return {
+        labels: topErrors.map(([type]) => type),
+        data: topErrors.map(([, count]) => count),
+        percentages: topErrors.map(([, count]) => ((count / errorCount) * 100).toFixed(2))
+      };
+    }
+    
+    // Handle old format
+    if (errors.topErrors && errors.topErrors.length > 0) {
+      const topErrors = errors.topErrors.slice(0, 10);
+      return {
+        labels: topErrors.map(e => e.type),
+        data: topErrors.map(e => e.count),
+        percentages: topErrors.map(e => parseFloat(e.percentage))
+      };
+    }
+    
+    return { labels: [], data: [] };
   }
 
   /**
@@ -290,16 +331,39 @@ class LoadTestSummarizer {
    * Generate timeline data
    */
   generateTimelineData(errors) {
-    if (!errors || !errors.errorTimeline) return { labels: [], data: [] };
+    // Handle new format from robust merge
+    if (errors?.samples && errors.samples.length > 0) {
+      const timeline = {};
+      errors.samples.forEach(error => {
+        if (error.timestamp) {
+          const minute = Math.floor(error.timestamp / 60000);
+          timeline[minute] = (timeline[minute] || 0) + 1;
+        }
+      });
+      
+      const sortedTimeline = Object.entries(timeline)
+        .sort(([a], [b]) => parseInt(a) - parseInt(b))
+        .slice(0, 20); // Show last 20 minutes
 
-    const timeline = Object.entries(errors.errorTimeline)
-      .sort(([a], [b]) => parseInt(a) - parseInt(b))
-      .slice(0, 20); // Show last 20 minutes
+      return {
+        labels: sortedTimeline.map(([minute]) => `Min ${minute}`),
+        data: sortedTimeline.map(([, count]) => count)
+      };
+    }
+    
+    // Handle old format
+    if (errors?.errorTimeline) {
+      const timeline = Object.entries(errors.errorTimeline)
+        .sort(([a], [b]) => parseInt(a) - parseInt(b))
+        .slice(0, 20); // Show last 20 minutes
 
-    return {
-      labels: timeline.map(([minute]) => `Min ${minute}`),
-      data: timeline.map(([, count]) => count)
-    };
+      return {
+        labels: timeline.map(([minute]) => `Min ${minute}`),
+        data: timeline.map(([, count]) => count)
+      };
+    }
+    
+    return { labels: [], data: [] };
   }
 
   /**
