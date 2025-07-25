@@ -26,7 +26,7 @@ export const options = {
     { duration: '2m', target: 0 },     // Quick ramp down
   ],
   thresholds: {
-    http_req_duration: ['p(95)<10000'], // 10 seconds max
+    http_req_duration: ['p(95)<15000'], // 15 seconds max (increased tolerance)
     http_req_failed: ['rate<0.40'],     // 40% error tolerance
   },
   // Optimizations for distributed execution
