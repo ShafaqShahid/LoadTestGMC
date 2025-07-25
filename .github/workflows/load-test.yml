@@ -274,6 +274,10 @@ jobs:
         wc -l outputs/distributed-1-results/distributed-1-results.json
         wc -l outputs/distributed-2-results/distributed-2-results.json
         wc -l outputs/distributed-3-results/distributed-3-results.json
+        echo "🔍 Debug: Current working directory:"
+        pwd
+        echo "🔍 Debug: All files in outputs:"
+        find outputs/ -type f -name "*.json"
         echo "🚀 Starting merge..."
         node load-tests/mergeLargeResults.js \
           outputs/combined-results.json \
