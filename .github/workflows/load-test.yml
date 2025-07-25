@@ -278,8 +278,8 @@ jobs:
         pwd
         echo "🔍 Debug: All files in outputs:"
         find outputs/ -type f -name "*.json"
-        echo "🚀 Starting robust merge..."
-        node load-tests/mergeLargeResults-robust.js \
+        echo "🚀 Starting bulletproof merge..."
+        node load-tests/mergeLargeResults-bulletproof.js \
           outputs/combined-results.json \
           outputs/distributed-1-results/distributed-1-results.json \
           outputs/distributed-2-results/distributed-2-results.json \
@@ -287,8 +287,8 @@ jobs:
         
     - name: Generate comprehensive HTML summary
       run: |
-        echo "📊 Generating detailed HTML summary..."
-        node load-tests/summarize.js \
+        echo "📊 Generating bulletproof HTML summary..."
+        node load-tests/summarize-bulletproof.js \
           outputs/combined-results.json \
           outputs/load-test-summary.html
         

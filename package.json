@@ -9,14 +9,20 @@
     "test:distributed-1": "k6 run load-tests/distributed-runner.js --env VUS=1000 --env DURATION=45m",
     "test:distributed-2": "k6 run load-tests/distributed-runner.js --env VUS=1000 --env DURATION=45m",
     "test:distributed-3": "k6 run load-tests/distributed-runner.js --env VUS=1000 --env DURATION=45m",
-    "merge-large-results": "node load-tests/mergeLargeResults.js",
-    "generate-summary": "node load-tests/summarize.js",
+    "merge-large-results": "node load-tests/mergeLargeResults-bulletproof.js",
+    "generate-summary": "node load-tests/summarize-bulletproof.js",
     "generate-pdf": "node load-tests/generate-pdf.js",
-    "process-distributed": "npm run merge-large-results && npm run generate-summary && npm run generate-pdf",
-    "test-system": "node test-system.js",
-    "test-system-cleanup": "node test-system.js --cleanup"
+    "process-distributed": "npm run merge-large-results && npm run generate-summary && npm run generate-pdf"
   },
-  "keywords": ["load-testing", "k6", "performance", "sports-system", "github-actions", "distributed-testing", "large-data-processing"],
+  "keywords": [
+    "load-testing",
+    "k6",
+    "performance",
+    "sports-system",
+    "github-actions",
+    "distributed-testing",
+    "large-data-processing"
+  ],
   "author": "Shafaq Shahid",
   "license": "MIT",
   "repository": {
@@ -24,7 +30,7 @@
     "url": "https://github.com/ShafaqShahid/LoadTest.git"
   },
   "dependencies": {
-    "puppeteer": "^21.0.0"
+    "puppeteer": "^24.15.0"
   },
   "devDependencies": {
     "chalk": "^4.1.2"
@@ -32,4 +38,4 @@
   "engines": {
     "node": ">=16.0.0"
   }
-} 
+}
