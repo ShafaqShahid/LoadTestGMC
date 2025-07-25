@@ -253,15 +253,24 @@ jobs:
         find outputs/ -name "*.json" -type f
         echo "📊 Total files found:"
         find outputs/ -name "*.json" -type f | wc -l
+        echo "📋 File sizes:"
+        ls -lh outputs/*/*.json
+        
+    - name: Verify files exist
+      run: |
+        echo "🔍 Verifying downloaded files..."
+        [ -f "outputs/distributed-1-results/distributed-1-results.json" ] && echo "✅ File 1 exists" || echo "❌ File 1 missing"
+        [ -f "outputs/distributed-2-results/distributed-2-results.json" ] && echo "✅ File 2 exists" || echo "❌ File 2 missing"
+        [ -f "outputs/distributed-3-results/distributed-3-results.json" ] && echo "✅ File 3 exists" || echo "❌ File 3 missing"
         
     - name: Merge large result files
       run: |
         echo "🧠 Starting memory-efficient merge of large result files..."
         node load-tests/mergeLargeResults.js \
           outputs/combined-results.json \
-          outputs/distributed-1-results.json \
-          outputs/distributed-2-results.json \
-          outputs/distributed-3-results.json
+          outputs/distributed-1-results/distributed-1-results.json \
+          outputs/distributed-2-results/distributed-2-results.json \
+          outputs/distributed-3-results/distributed-3-results.json
         
     - name: Generate comprehensive HTML summary
       run: |
