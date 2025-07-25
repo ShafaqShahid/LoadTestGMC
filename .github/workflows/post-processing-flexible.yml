@@ -1,0 +1,171 @@
+name: Flexible Post-Processing
+
+on:
+  workflow_dispatch:
+    inputs:
+      search_pattern:
+        description: 'Pattern to search for artifacts (e.g., "distributed", "results")'
+        required: false
+        default: 'distributed'
+        type: string
+      max_artifacts:
+        description: 'Maximum number of artifacts to process'
+        required: false
+        default: '10'
+        type: string
+
+jobs:
+  post-processing:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        
+    - name: Install dependencies
+      run: npm install
+      
+    - name: Install Puppeteer for PDF generation
+      run: npm install puppeteer
+      
+    - name: List available artifacts
+      run: |
+        echo "🔍 Searching for artifacts with pattern: ${{ github.event.inputs.search_pattern }}"
+        echo "📋 Available artifacts in this run:"
+        # This will be populated by the next step
+      
+    - name: Download all matching artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: outputs/
+        
+    - name: Create outputs directory
+      run: mkdir -p outputs
+      
+    - name: Analyze downloaded artifacts
+      run: |
+        echo "📁 Downloaded artifacts structure:"
+        find outputs/ -type f -name "*.json" | head -20
+        echo ""
+        echo "📊 Total JSON files found:"
+        find outputs/ -name "*.json" -type f | wc -l
+        echo ""
+        echo "📋 Directory structure:"
+        tree outputs/ 2>/dev/null || find outputs/ -type d | head -10
+        echo ""
+        echo "📏 File sizes:"
+        find outputs/ -name "*.json" -type f -exec ls -lh {} \; | head -10
+        
+    - name: Auto-detect result files
+      id: detect-files
+      run: |
+        echo "🔍 Auto-detecting result files..."
+        
+        # Look for common patterns
+        FILES=()
+        
+        # Pattern 1: distributed-X-results/distributed-X-results.json
+        for i in 1 2 3 4 5; do
+          if [ -f "outputs/distributed-$i-results/distributed-$i-results.json" ]; then
+            FILES+=("outputs/distributed-$i-results/distributed-$i-results.json")
+            echo "✅ Found: outputs/distributed-$i-results/distributed-$i-results.json"
+          fi
+        done
+        
+        # Pattern 2: direct files
+        for i in 1 2 3 4 5; do
+          if [ -f "outputs/distributed-$i-results.json" ]; then
+            FILES+=("outputs/distributed-$i-results.json")
+            echo "✅ Found: outputs/distributed-$i-results.json"
+          fi
+        done
+        
+        # Pattern 3: any JSON files in outputs
+        if [ ${#FILES[@]} -eq 0 ]; then
+          echo "🔍 No standard patterns found, looking for any JSON files..."
+          while IFS= read -r -d '' file; do
+            FILES+=("$file")
+            echo "✅ Found: $file"
+          done < <(find outputs/ -name "*.json" -type f -print0 | head -z 10)
+        fi
+        
+        # Save file list for next steps
+        printf '%s\n' "${FILES[@]}" > file_list.txt
+        echo "📋 Total files to process: ${#FILES[@]}"
+        echo "files_count=${#FILES[@]}" >> $GITHUB_OUTPUT
+        
+    - name: Merge detected result files
+      run: |
+        echo "🧠 Starting memory-efficient merge..."
+        
+        if [ ! -s file_list.txt ]; then
+          echo "❌ No files found to process!"
+          exit 1
+        fi
+        
+        FILES=($(cat file_list.txt))
+        echo "📊 Processing ${#FILES[@]} files..."
+        
+        # Build command
+        CMD="node load-tests/mergeLargeResults.js outputs/combined-results.json"
+        for file in "${FILES[@]}"; do
+          CMD="$CMD \"$file\""
+        done
+        
+        echo "🚀 Running: $CMD"
+        eval $CMD
+        
+    - name: Generate comprehensive HTML summary
+      run: |
+        echo "📊 Generating detailed HTML summary..."
+        node load-tests/summarize.js \
+          outputs/combined-results.json \
+          outputs/load-test-summary.html
+        
+    - name: Generate PDF report
+      run: |
+        echo "📄 Generating PDF report..."
+        node load-tests/generate-pdf.js --styled \
+          outputs/load-test-summary.html \
+          outputs/load-test-report.pdf
+        
+    - name: Upload final combined results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: flexible-post-processing-report
+        path: |
+          outputs/combined-results.json
+          outputs/load-test-summary.html
+          outputs/load-test-report.pdf
+          file_list.txt
+        retention-days: 30
+        
+    - name: Generate workflow summary
+      run: |
+        echo "## 🚀 Flexible Post-Processing Results" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📊 Processing Summary" >> $GITHUB_STEP_SUMMARY
+        echo "- **Files Processed:** ${{ steps.detect-files.outputs.files_count }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Processing Time:** $(date)" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📁 Generated Reports" >> $GITHUB_STEP_SUMMARY
+        echo "- **Combined Results:** combined-results.json" >> $GITHUB_STEP_SUMMARY
+        echo "- **HTML Summary:** load-test-summary.html" >> $GITHUB_STEP_SUMMARY
+        echo "- **PDF Report:** load-test-report.pdf" >> $GITHUB_STEP_SUMMARY
+        echo "- **File List:** file_list.txt" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📈 Key Features" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Auto-detects result files" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Memory-efficient processing" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Detailed error analysis" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Interactive charts" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Professional PDF reports" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "📋 **Results available in artifacts:** flexible-post-processing-report" >> $GITHUB_STEP_SUMMARY 

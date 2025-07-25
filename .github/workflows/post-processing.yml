@@ -1,0 +1,130 @@
+name: Post-Processing Only
+
+on:
+  workflow_dispatch:
+    inputs:
+      artifact_name:
+        description: 'Name of the artifact containing distributed test results'
+        required: true
+        default: 'distributed-test-results'
+        type: string
+      run_id:
+        description: 'Run ID containing the artifacts (leave empty for latest)'
+        required: false
+        type: string
+
+jobs:
+  post-processing:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        
+    - name: Install dependencies
+      run: npm install
+      
+    - name: Install Puppeteer for PDF generation
+      run: npm install puppeteer
+      
+    - name: Download distributed test results
+      uses: actions/download-artifact@v4
+      with:
+        name: ${{ github.event.inputs.artifact_name }}
+        path: outputs/
+        
+    - name: Create outputs directory
+      run: mkdir -p outputs
+      
+    - name: List downloaded artifacts
+      run: |
+        echo "📁 Downloaded artifacts:"
+        find outputs/ -name "*.json" -type f
+        echo "📊 Total files found:"
+        find outputs/ -name "*.json" -type f | wc -l
+        echo "📋 File sizes:"
+        ls -lh outputs/*/*.json 2>/dev/null || echo "No nested files found"
+        ls -lh outputs/*.json 2>/dev/null || echo "No direct files found"
+        
+    - name: Verify files exist
+      run: |
+        echo "🔍 Verifying downloaded files..."
+        [ -f "outputs/distributed-1-results/distributed-1-results.json" ] && echo "✅ File 1 exists" || echo "❌ File 1 missing"
+        [ -f "outputs/distributed-2-results/distributed-2-results.json" ] && echo "✅ File 2 exists" || echo "❌ File 2 missing"
+        [ -f "outputs/distributed-3-results/distributed-3-results.json" ] && echo "✅ File 3 exists" || echo "❌ File 3 missing"
+        
+    - name: Merge large result files
+      run: |
+        echo "🧠 Starting memory-efficient merge of large result files..."
+        echo "🔍 Debug: Checking file paths..."
+        ls -la outputs/ 2>/dev/null || echo "outputs/ directory is empty"
+        ls -la outputs/distributed-1-results/ 2>/dev/null || echo "distributed-1-results/ not found"
+        ls -la outputs/distributed-2-results/ 2>/dev/null || echo "distributed-2-results/ not found"
+        ls -la outputs/distributed-3-results/ 2>/dev/null || echo "distributed-3-results/ not found"
+        echo "🔍 Debug: File sizes..."
+        wc -l outputs/distributed-1-results/distributed-1-results.json 2>/dev/null || echo "File 1 not found"
+        wc -l outputs/distributed-2-results/distributed-2-results.json 2>/dev/null || echo "File 2 not found"
+        wc -l outputs/distributed-3-results/distributed-3-results.json 2>/dev/null || echo "File 3 not found"
+        echo "🔍 Debug: Current working directory:"
+        pwd
+        echo "🔍 Debug: All files in outputs:"
+        find outputs/ -type f -name "*.json"
+        echo "🚀 Starting merge..."
+        node load-tests/mergeLargeResults.js \
+          outputs/combined-results.json \
+          outputs/distributed-1-results/distributed-1-results.json \
+          outputs/distributed-2-results/distributed-2-results.json \
+          outputs/distributed-3-results/distributed-3-results.json
+        
+    - name: Generate comprehensive HTML summary
+      run: |
+        echo "📊 Generating detailed HTML summary..."
+        node load-tests/summarize.js \
+          outputs/combined-results.json \
+          outputs/load-test-summary.html
+        
+    - name: Generate PDF report
+      run: |
+        echo "📄 Generating PDF report..."
+        node load-tests/generate-pdf.js --styled \
+          outputs/load-test-summary.html \
+          outputs/load-test-report.pdf
+        
+    - name: Upload final combined results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: post-processing-final-report
+        path: |
+          outputs/combined-results.json
+          outputs/load-test-summary.html
+          outputs/load-test-report.pdf
+        retention-days: 30
+        
+    - name: Generate workflow summary
+      run: |
+        echo "## 🚀 Post-Processing Results" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📊 Processing Summary" >> $GITHUB_STEP_SUMMARY
+        echo "- **Input Artifact:** ${{ github.event.inputs.artifact_name }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Processing Time:** $(date)" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📁 Generated Reports" >> $GITHUB_STEP_SUMMARY
+        echo "- **Combined Results:** combined-results.json" >> $GITHUB_STEP_SUMMARY
+        echo "- **HTML Summary:** load-test-summary.html" >> $GITHUB_STEP_SUMMARY
+        echo "- **PDF Report:** load-test-report.pdf" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📈 Key Features" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Memory-efficient processing of large files" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Detailed error analysis and patterns" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Performance percentile calculations" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Interactive charts and visualizations" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Professional PDF reports" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "📋 **Results available in artifacts:** post-processing-final-report" >> $GITHUB_STEP_SUMMARY 
