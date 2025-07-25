@@ -59,8 +59,7 @@ class BulletproofSummarizer {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Load Test Summary Report</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+         <title>Load Test Summary Report</title>
     <style>
         * {
             margin: 0;
@@ -206,15 +205,7 @@ class BulletproofSummarizer {
             background: #f8f9fa;
         }
         
-        .chart-container {
-            position: relative;
-            height: 400px;
-            margin: 30px 0;
-            background: white;
-            border-radius: 10px;
-            padding: 20px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-        }
+        
         
         .status-badge {
             padding: 5px 12px;
@@ -306,6 +297,27 @@ class BulletproofSummarizer {
             padding: 5px 10px;
             border-radius: 5px;
         }
+        
+        .url-cell {
+            max-width: 300px;
+            word-break: break-all;
+            font-size: 0.9em;
+            line-height: 1.3;
+        }
+        
+        .error-table {
+            font-size: 0.9em;
+        }
+        
+        .error-table th {
+            font-size: 0.8em;
+            padding: 12px 8px;
+        }
+        
+        .error-table td {
+            padding: 10px 8px;
+            vertical-align: top;
+        }
     </style>
 </head>
 <body>
@@ -316,15 +328,14 @@ class BulletproofSummarizer {
             <div class="subtitle">Generated: ${new Date().toLocaleString()}</div>
         </div>
         
-        <div class="content">
-            ${this.generateTestConfigSection()}
-            ${this.generateOverviewSection()}
-            ${this.generatePerformanceSection()}
-            ${this.generateThresholdsSection()}
-            ${this.generateChecksSection()}
-            ${this.generateErrorsSection()}
-            ${this.generateChartsSection()}
-        </div>
+                 <div class="content">
+             ${this.generateTestConfigSection()}
+             ${this.generateOverviewSection()}
+             ${this.generatePerformanceSection()}
+             ${this.generateThresholdsSection()}
+             ${this.generateChecksSection()}
+             ${this.generateErrorsSection()}
+         </div>
         
         <div class="footer">
             <p>Report generated automatically from k6 distributed load test results</p>
@@ -332,9 +343,9 @@ class BulletproofSummarizer {
         </div>
     </div>
     
-    <script>
-        ${this.generateChartScripts()}
-    </script>
+         <script>
+         // Charts removed per user request
+     </script>
 </body>
 </html>`;
   }
@@ -647,25 +658,31 @@ class BulletproofSummarizer {
                 `).join('') : '<p>No error type data available.</p>'}
             </div>
             
-            <div class="error-details">
-                <div class="config-title">📊 Status Code Distribution</div>
-                ${Object.keys(statusCodes).length > 0 ? Object.entries(statusCodes)
-                    .sort((a, b) => b[1] - a[1])
-                    .slice(0, 10)
-                    .map(([status, count]) => `
-                    <div class="metric-row">
-                        <span class="metric-label">HTTP ${status}:</span>
-                        <span class="metric-value">${count.toLocaleString()}</span>
-                    </div>
-                `).join('') : '<p>No status code data available.</p>'}
-            </div>
+                         <div class="error-details">
+                 <div class="config-title">📊 Status Code Distribution</div>
+                 ${Object.keys(statusCodes).length > 0 ? (() => {
+                     const totalRequests = Object.values(statusCodes).reduce((sum, count) => sum + count, 0);
+                     return Object.entries(statusCodes)
+                         .sort((a, b) => b[1] - a[1])
+                         .slice(0, 10)
+                         .map(([status, count]) => {
+                             const percentage = totalRequests > 0 ? ((count / totalRequests) * 100).toFixed(1) : '0.0';
+                             return `
+                             <div class="metric-row">
+                                 <span class="metric-label">HTTP ${status}:</span>
+                                 <span class="metric-value">${count.toLocaleString()} (${percentage}%)</span>
+                             </div>
+                         `;
+                         }).join('');
+                 })() : '<p>No status code data available.</p>'}
+             </div>
         </div>
         
         ${errorSamples.length > 0 ? `
         <div class="config-card">
             <div class="config-title">🔍 Error Samples (First 20)</div>
             <div class="table-container">
-                <table>
+                <table class="error-table">
                     <thead>
                         <tr>
                             <th>Timestamp</th>
@@ -683,7 +700,7 @@ class BulletproofSummarizer {
                                 <td><code>${error.type || 'unknown'}</code></td>
                                 <td><code>${error.status || 'N/A'}</code></td>
                                 <td><code>${error.method || 'N/A'}</code></td>
-                                <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis;">${error.url || 'N/A'}</td>
+                                <td class="url-cell"><code>${error.url || 'N/A'}</code></td>
                                 <td>${error.error || 'N/A'}</td>
                             </tr>
                         `).join('')}
@@ -695,132 +712,7 @@ class BulletproofSummarizer {
     </div>`;
   }
 
-  /**
-   * Generate charts section
-   */
-  generateChartsSection() {
-    return `
-    <div class="section">
-        <h2 class="section-title">
-            <span class="icon">📊</span>
-            Performance Charts
-        </h2>
-        
-        <div class="chart-container">
-            <canvas id="responseTimeChart"></canvas>
-        </div>
-        
-        <div class="chart-container">
-            <canvas id="errorDistributionChart"></canvas>
-        </div>
-    </div>`;
-  }
-
-  /**
-   * Generate chart scripts
-   */
-  generateChartScripts() {
-    const performance = this.data.performance || {};
-    const httpReq = performance.httpReqDuration || {};
-    const errors = this.data.errors || {};
-    const topErrors = (errors.byType || []).slice(0, 5);
-    
-    return `
-    // Response Time Chart
-    const responseCtx = document.getElementById('responseTimeChart').getContext('2d');
-    new Chart(responseCtx, {
-        type: 'bar',
-        data: {
-            labels: ['Average', 'P90', 'P95', 'P99', 'Max'],
-            datasets: [{
-                label: 'Response Time (ms)',
-                data: [
-                    ${httpReq.avg || 0},
-                    ${httpReq.p90 || 0},
-                    ${httpReq.p95 || 0},
-                    ${httpReq.p99 || 0},
-                    ${httpReq.max || 0}
-                ],
-                backgroundColor: [
-                    'rgba(52, 152, 219, 0.8)',
-                    'rgba(155, 89, 182, 0.8)',
-                    'rgba(241, 196, 15, 0.8)',
-                    'rgba(230, 126, 34, 0.8)',
-                    'rgba(231, 76, 60, 0.8)'
-                ],
-                borderColor: [
-                    'rgba(52, 152, 219, 1)',
-                    'rgba(155, 89, 182, 1)',
-                    'rgba(241, 196, 15, 1)',
-                    'rgba(230, 126, 34, 1)',
-                    'rgba(231, 76, 60, 1)'
-                ],
-                borderWidth: 2
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                title: {
-                    display: true,
-                    text: 'Response Time Distribution',
-                    font: { size: 16, weight: 'bold' }
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    title: {
-                        display: true,
-                        text: 'Time (ms)'
-                    }
-                }
-            }
-        }
-    });
-    
-    // Error Distribution Chart
-    const errorCtx = document.getElementById('errorDistributionChart').getContext('2d');
-    new Chart(errorCtx, {
-        type: 'doughnut',
-        data: {
-            labels: [${topErrors.map(e => `'${e.type.replace(/_/g, ' ')}'`).join(', ')}],
-            datasets: [{
-                data: [${topErrors.map(e => e.count).join(', ')}],
-                backgroundColor: [
-                    'rgba(231, 76, 60, 0.8)',
-                    'rgba(230, 126, 34, 0.8)',
-                    'rgba(241, 196, 15, 0.8)',
-                    'rgba(155, 89, 182, 0.8)',
-                    'rgba(52, 152, 219, 0.8)'
-                ],
-                borderColor: [
-                    'rgba(231, 76, 60, 1)',
-                    'rgba(230, 126, 34, 1)',
-                    'rgba(241, 196, 15, 1)',
-                    'rgba(155, 89, 182, 1)',
-                    'rgba(52, 152, 219, 1)'
-                ],
-                borderWidth: 2
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                title: {
-                    display: true,
-                    text: 'Error Distribution by Type',
-                    font: { size: 16, weight: 'bold' }
-                },
-                legend: {
-                    position: 'bottom'
-                }
-            }
-        }
-    });`;
-  }
+  
 }
 
 /**

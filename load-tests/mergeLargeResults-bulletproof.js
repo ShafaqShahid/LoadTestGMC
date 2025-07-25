@@ -140,6 +140,13 @@ class BulletproofResultMerger {
       const failureValue = data.data?.value || data.value || 0;
       const tags = data.data?.tags || data.tags || {};
       
+      // Track ALL requests by status code (both successful and failed)
+      const status = tags.status || 'unknown';
+      if (!this.requestsByStatus[status]) {
+        this.requestsByStatus[status] = 0;
+      }
+      this.requestsByStatus[status]++;
+      
       if (failureValue === 1) {
         // Categorize error by type
         const errorType = this.categorizeError(tags);
@@ -162,8 +169,11 @@ class BulletproofResultMerger {
         }
         this.errorsByType[errorType]++;
       }
-
-      // Track requests by status code
+    }
+    
+    // Also track status codes from http_reqs metric
+    if (data.metric === 'http_reqs') {
+      const tags = data.data?.tags || data.tags || {};
       const status = tags.status || 'unknown';
       if (!this.requestsByStatus[status]) {
         this.requestsByStatus[status] = 0;
